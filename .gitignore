@@ -1,0 +1,7 @@
+exp*
+.ipynb*
+*.db
+*.pt
+*.ts
+
+experiments/
