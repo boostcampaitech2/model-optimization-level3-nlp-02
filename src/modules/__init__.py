@@ -12,6 +12,8 @@ from src.modules.invertedresidualv3 import (InvertedResidualv3,
 from src.modules.linear import Linear, LinearGenerator
 from src.modules.poolings import (AvgPoolGenerator, GlobalAvgPool,
                                   GlobalAvgPoolGenerator, MaxPoolGenerator)
+from src.modules.fire import Fire, FireGenerator
+from src.modules.dropout import DropoutGenerator
 
 __all__ = [
     "ModuleGenerator",
@@ -37,4 +39,5 @@ __all__ = [
     "InvertedResidualv2Generator",
     "InvertedResidualv3Generator",
     "FireGenerator",
+    "DropoutGenerator",
 ]
