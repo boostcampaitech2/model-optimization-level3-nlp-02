@@ -127,7 +127,8 @@ def get_dataloader(
         pin_memory=(torch.cuda.is_available()),
         shuffle=False,
         batch_size=batch_size,
-        num_workers=5
+        num_workers=5,
+        drop_last=True
     )
     test_loader = DataLoader(
         dataset=test_dataset,

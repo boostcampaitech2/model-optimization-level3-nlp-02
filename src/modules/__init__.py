@@ -23,6 +23,8 @@ __all__ = [
     "GlobalAvgPool",
     "InvertedResidualv2",
     "InvertedResidualv3",
+    "Fire",
+
     "BottleneckGenerator",
     "FixedConvGenerator",
     "ConvGenerator",
@@ -34,4 +36,5 @@ __all__ = [
     "GlobalAvgPoolGenerator",
     "InvertedResidualv2Generator",
     "InvertedResidualv3Generator",
+    "FireGenerator",
 ]
