@@ -3,3 +3,7 @@ empty
 input
 src/__pycache__
 src/modules/__pycache__
+result_model.*
+exp/
+src/utils/__pycache__
+*.db

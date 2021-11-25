@@ -17,7 +17,7 @@ import argparse
 
 EPOCH = 100
 # DATA_PATH = "/opt/ml/input/data"  # type your data path here that contains test, train and val directories
-DATA_PATH = "/opt/ml/code/input/cifar10"
+DATA_PATH = "/opt/ml/code/input/cifar10" #
 RESULT_MODEL_PATH = "./result_model.pt" # result model will be saved in this path
 
 
@@ -330,8 +330,8 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     model.append([1, "FixedConv", [6, 1, 1, None, 1, None]])
 
     # 마지막 분류기
-    model.append([1, 'Flatten', []],)
-    model.append([1, 'Linear', [10]])
+    model.append([1, 'Flatten', []],) #
+    model.append([1, 'Linear', [10]]) #
 
     module_info = {}
     module_info["m1"] = {"type": m1, "repeat": m1_repeat, "stride": m1_stride}
@@ -375,7 +375,7 @@ def objective(trial: optuna.trial.Trial, device) -> Tuple[float, int, float]:
     data_config: Dict[str, Any] = {}
     data_config["DATA_PATH"] = DATA_PATH
     # data_config["DATASET"] = "TACO"
-    data_config["DATASET"] = "CIFAR10"
+    data_config["DATASET"] = "CIFAR10" #
     data_config["AUG_TRAIN"] = "randaugment_train"
     data_config["AUG_TEST"] = "simple_augment_test"
     data_config["AUG_TRAIN_PARAMS"] = {
@@ -383,7 +383,7 @@ def objective(trial: optuna.trial.Trial, device) -> Tuple[float, int, float]:
     }
     data_config["AUG_TEST_PARAMS"] = None
     data_config["BATCH_SIZE"] = hyperparams["BATCH_SIZE"]
-    data_config["VAL_RATIO"] = 0.8
+    data_config["VAL_RATIO"] = 0.2  # 0.8
     data_config["IMG_SIZE"] = hyperparams["IMG_SIZE"]
 
     mean_time = check_runtime(
