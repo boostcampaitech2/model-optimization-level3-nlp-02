@@ -3,6 +3,8 @@
 - Contact: placidus36@gmail.com, shinn1897@makinarocks.ai
 """
 import optuna
+import logging
+import sys
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -16,14 +18,13 @@ from subprocess import _args_from_interpreter_flags
 import argparse
 
 EPOCH = 100
-# DATA_PATH = "/opt/ml/input/data"  # type your data path here that contains test, train and val directories
-DATA_PATH = "/opt/ml/code/input/cifar10" #
+DATA_PATH = "/opt/ml/data"  # type your data path here that contains test, train and val directories
 RESULT_MODEL_PATH = "./result_model.pt" # result model will be saved in this path
 
 
 def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
     """Search hyperparam from user-specified search space."""
-    epochs = trial.suggest_int("epochs", low=50, high=50, step=50)
+    epochs = trial.suggest_int("epochs", low=2, high=3, step=50) #original 50
     img_size = trial.suggest_categorical("img_size", [96, 112, 168, 224])
     n_select = trial.suggest_int("n_select", low=0, high=6, step=2)
     batch_size = trial.suggest_int("batch_size", low=16, high=32, step=16)
@@ -61,7 +62,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
 
     # Module 2
     m2 = trial.suggest_categorical(
-        "m2", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Pass"]
+        "m2", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
     )
     m2_args = []
     m2_repeat = trial.suggest_int("m2/repeat", 1, 5)
@@ -330,8 +331,8 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     model.append([1, "FixedConv", [6, 1, 1, None, 1, None]])
 
     # 마지막 분류기
-    model.append([1, 'Flatten', []],) #
-    model.append([1, 'Linear', [10]]) #
+    # model.append([1, 'Flatten', []],) #
+    # model.append([1, 'Linear', [10]]) #
 
     module_info = {}
     module_info["m1"] = {"type": m1, "repeat": m1_repeat, "stride": m1_stride}
@@ -463,7 +464,9 @@ def tune(gpu_id, storage: str = None):
         device = torch.device(f"cuda:{gpu_id}")
     sampler = optuna.samplers.MOTPESampler()
     if storage is not None:
+        print(f"****** storage url is {storage} ******")
         rdb_storage = optuna.storages.RDBStorage(url=storage)
+        print(rdb_storage)
     else:
         rdb_storage = None
     study = optuna.create_study(
@@ -503,6 +506,6 @@ def tune(gpu_id, storage: str = None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Optuna tuner.")
     parser.add_argument("--gpu", default=0, type=int, help="GPU id to use")
-    parser.add_argument("--storage", default="", type=str, help="Optuna database storage path.")
+    parser.add_argument("--storage", default="sqlite:///automl101.db", type=str, help="Optuna database storage path.")
     args = parser.parse_args()
     tune(args.gpu, storage=args.storage if args.storage != "" else None)

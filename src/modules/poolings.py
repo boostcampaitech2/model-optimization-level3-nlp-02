@@ -28,9 +28,9 @@ class MaxPoolGenerator(GeneratorAbstract):
 
     def __call__(self, repeat: int = 1):
         module = (
-            [self.base_module(kernel_size=self.args[0], stride=self.args[1], ceil_mode=self.args[2]) for _ in range(repeat)]
+            [self.base_module(*self.args) for _ in range(repeat)]
             if repeat > 1
-            else self.base_module(kernel_size=self.args[0], stride=self.args[1], ceil_mode=self.args[2])
+            else self.base_module(*self.args)
         )
         return self._get_module(module)
 
