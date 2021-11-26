@@ -42,7 +42,7 @@ class ECAInvertedResidualv2(nn.Module):
                 norm_layer(oup),
             ]
         )
-        layers.append(eca_layer(oup, k))
+        layers.append(eca_layer(oup, k, stride))
         self.conv = nn.Sequential(*layers)
 
     def forward(self, x):

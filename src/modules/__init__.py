@@ -13,6 +13,10 @@ from src.modules.invertedresidualv3 import (InvertedResidualv3,
 from src.modules.linear import Linear, LinearGenerator
 from src.modules.poolings import (AvgPoolGenerator, GlobalAvgPool,
                                   GlobalAvgPoolGenerator, MaxPoolGenerator)
+from src.modules.eca_invertedresidualv2 import (ECAInvertedResidualv2,
+                                                ECAInvertedResidualv2Generator)
+from src.modules.eca_invertedresidualv3 import (ECAInvertedResidualv3,
+                                                ECAInvertedResidualv3Generator)
 
 __all__ = [
     "ModuleGenerator",

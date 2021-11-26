@@ -61,8 +61,11 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     model.append([m1_repeat, m1, m1_args])
 
     # Module 2
+    # m2 = trial.suggest_categorical(
+    #     "m2", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass",]
+    # )
     m2 = trial.suggest_categorical(
-        "m2", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass",]
+        "m2", ["ECAInvertedResidualv2",]
     )
     m2_args = []
     m2_repeat = trial.suggest_int("m2/repeat", 1, 5)
@@ -100,8 +103,15 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     elif m2 == "ECAInvertedResidualv2":
         m2_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
         m2_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
-        m2_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m2_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=2)
         m2_args = [m2_c, m2_t, m2_stride, m2_k]
+    elif m2 == "ECAInvertedResidualv3":
+        m2_kernel = trial.suggest_int("m2/kernel_size", low=3, high=5, step=2)
+        m2_t = round(trial.suggest_float("m2/v3_t", low=1.0, high=6.0, step=0.1), 1)
+        m2_c = trial.suggest_int("m2/v3_c", low=16, high=40, step=8)
+        m2_k_eca = trial.suggest_int("m2/v3_k_eca", low=3, high=9, step=2)
+        m2_hs = trial.suggest_categorical("m2/v3_hs", [0, 1])
+        m2_args = [m2_kernel, m2_t, m2_c, m2_k_eca, m2_hs, m2_stride]
     if not m2 == "Pass":
         if m2_stride == 2:
             n_stride += 1
@@ -110,8 +120,11 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         model.append([m2_repeat, m2, m2_args])
 
     # Module 3
+    # m3 = trial.suggest_categorical(
+    #     "m3", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"]
+    # )
     m3 = trial.suggest_categorical(
-        "m3", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
+        "m3", [ "ECAInvertedResidualv3",]
     )
     m3_args = []
     m3_repeat = trial.suggest_int("m3/repeat", 1, 5)
@@ -144,10 +157,17 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m3_hs = trial.suggest_categorical("m3/v3_hs", [0, 1])
         m3_args = [m3_kernel, m3_t, m3_c, m3_se, m3_hs, m3_stride]
     elif m3 == "ECAInvertedResidualv2":
-        m3_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
-        m3_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
-        m3_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m3_c = trial.suggest_int("m3/eca_v2_c", low=16, high=32, step=16)
+        m3_t = trial.suggest_int("m3/eca_v2_t", low=1, high=4)
+        m3_k = trial.suggest_int("m3/eca_v2_k", low=3, high=9, step=2)
         m3_args = [m3_c, m3_t, m3_stride, m3_k]
+    elif m3 == "ECAInvertedResidualv3":
+        m3_kernel = trial.suggest_int("m3/kernel_size", low=3, high=5, step=2)
+        m3_t = round(trial.suggest_float("m3/v3_t", low=1.0, high=6.0, step=0.1), 1)
+        m3_c = trial.suggest_int("m3/v3_c", low=16, high=40, step=8)
+        m3_k_eca = trial.suggest_int("m3/v3_k_eca", low=3, high=9, step=2)
+        m3_hs = trial.suggest_categorical("m3/v3_hs", [0, 1])
+        m3_args = [m3_kernel, m3_t, m3_c, m3_k_eca, m3_hs, m3_stride]
     if not m3 == "Pass":
         if m3_stride == 2:
             n_stride += 1
@@ -193,9 +213,9 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m4_hs = trial.suggest_categorical("m4/v3_hs", [0, 1])
         m4_args = [m4_kernel, m4_t, m4_c, m4_se, m4_hs, m4_stride]
     elif m4 == "ECAInvertedResidualv2":
-        m4_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
-        m4_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
-        m4_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m4_c = trial.suggest_int("m4/eca_v2_c", low=16, high=32, step=16)
+        m4_t = trial.suggest_int("m4/eca_v2_t", low=1, high=4)
+        m4_k = trial.suggest_int("m4/eca_v2_k", low=3, high=9, step=2)
         m4_args = [m4_c, m4_t, m4_stride, m4_k]
     if not m4 == "Pass":
         if m4_stride == 2:
@@ -243,9 +263,9 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m5_stride = trial.suggest_int("m5/stride", low=1, high=UPPER_STRIDE)
         m5_args = [m5_kernel, m5_t, m5_c, m5_se, m5_hs, m5_stride]
     elif m5 == "ECAInvertedResidualv2":
-        m5_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
-        m5_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
-        m5_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m5_c = trial.suggest_int("m5/eca_v2_c", low=16, high=32, step=16)
+        m5_t = trial.suggest_int("m5/eca_v2_t", low=1, high=4)
+        m5_k = trial.suggest_int("m5/eca_v2_k", low=3, high=9, step=2)
         m5_args = [m5_c, m5_t, m5_stride, m5_k]
     if not m5 == "Pass":
         if m5_stride == 2:
@@ -292,9 +312,9 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m6_hs = trial.suggest_categorical("m6/v3_hs", [0, 1])
         m6_args = [m6_kernel, m6_t, m6_c, m6_se, m6_hs, m6_stride]
     elif m6 == "ECAInvertedResidualv2":
-        m6_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
-        m6_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
-        m6_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m6_c = trial.suggest_int("m6/eca_v2_c", low=16, high=32, step=16)
+        m6_t = trial.suggest_int("m6/eca_v2_t", low=1, high=4)
+        m6_k = trial.suggest_int("m6/eca_v2_k", low=3, high=9, step=2)
         m6_args = [m6_c, m6_t, m6_stride, m6_k]
     if not m6 == "Pass":
         if m6_stride == 2:
@@ -342,9 +362,9 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m7_hs = trial.suggest_categorical("m7/v3_hs", [0, 1])
         m7_args = [m7_kernel, m7_t, m7_c, m7_se, m7_hs, m7_stride]
     elif m7 == "ECAInvertedResidualv2":
-        m7_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
-        m7_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
-        m7_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m7_c = trial.suggest_int("m7/eca_v2_c", low=16, high=32, step=16)
+        m7_t = trial.suggest_int("m7/eca_v2_t", low=1, high=4)
+        m7_k = trial.suggest_int("m7/eca_v2_k", low=3, high=9, step=2)
         m7_args = [m7_c, m7_t, m7_stride, m7_k]
     if not m7 == "Pass":
         if m7_stride == 2:
@@ -359,10 +379,6 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     model.append([1, "Conv", [last_dim, 1, 1]])
     model.append([1, "GlobalAvgPool", []])
     model.append([1, "FixedConv", [6, 1, 1, None, 1, None]])
-
-    # 마지막 분류기
-    # model.append([1, 'Flatten', []],) #
-    # model.append([1, 'Linear', [10]]) #
 
     module_info = {}
     module_info["m1"] = {"type": m1, "repeat": m1_repeat, "stride": m1_stride}
