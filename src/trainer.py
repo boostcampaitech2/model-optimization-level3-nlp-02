@@ -18,6 +18,7 @@ from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
 from torch.utils.data.sampler import SequentialSampler, SubsetRandomSampler
 from tqdm import tqdm
+import optuna
 
 from src.utils.torch_utils import save_model
 
@@ -88,6 +89,7 @@ class TorchTrainer:
         scaler=None,
         device: torch.device = "cpu",
         verbose: int = 1,
+        trial=None,
     ) -> None:
         """Initialize TorchTrainer class.
 
@@ -107,6 +109,7 @@ class TorchTrainer:
         self.scaler = scaler
         self.verbose = verbose
         self.device = device
+        self.trial = trial
 
     def train(
         self,
@@ -172,20 +175,29 @@ class TorchTrainer:
                 )
             pbar.close()
 
-            _, test_f1, test_acc = self.test(
-                model=self.model, test_dataloader=val_dataloader
-            )
-            if best_test_f1 > test_f1:
-                continue
-            best_test_acc = test_acc
-            best_test_f1 = test_f1
-            print(f"Model saved. Current best test f1: {best_test_f1:.3f}")
-            save_model(
-                model=self.model,
-                path=self.model_path,
-                data=data,
-                device=self.device,
-            )
+            if val_dataloader:
+                _, test_f1, test_acc = self.test(
+                    model=self.model, test_dataloader=val_dataloader
+                )
+
+                ########################Pruning#################################
+                # self.trial.report(test_f1, epoch)
+                # if self.trial.should_prune():
+                #     print('This trial has been pruned!')
+                #     raise optuna.TrialPruned()
+                #########################################################
+
+                if best_test_f1 > test_f1:
+                    continue
+                best_test_acc = test_acc
+                best_test_f1 = test_f1
+                print(f"Model saved. Current best test f1: {best_test_f1:.3f}")
+                save_model(
+                    model=self.model,
+                    path=self.model_path,
+                    data=data,
+                    device=self.device,
+                )
 
         return best_test_acc, best_test_f1
 

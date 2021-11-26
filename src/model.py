@@ -84,7 +84,7 @@ class ModelParser:
         layers: List[nn.Module] = []
         log: str = (
             f"{'idx':>3} | {'n':>3} | {'params':>10} "
-            f"| {'module':>15} | {'arguments':>20} | {'in_channel':>12} | {'out_channel':>13}"
+            f"| {'module':>20} | {'arguments':>50} | {'in_channel':>12} | {'out_channel':>13}"
         )
         self.log(log)
         self.log(len(log) * "-")  # type: ignore

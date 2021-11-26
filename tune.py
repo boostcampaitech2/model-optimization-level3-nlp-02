@@ -24,7 +24,7 @@ RESULT_MODEL_PATH = "./result_model.pt" # result model will be saved in this pat
 
 def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
     """Search hyperparam from user-specified search space."""
-    epochs = trial.suggest_int("epochs", low=2, high=3, step=50) #original 50
+    epochs = trial.suggest_int("epochs", low=2, high=5, step=1) #original 50
     img_size = trial.suggest_categorical("img_size", [96, 112, 168, 224])
     n_select = trial.suggest_int("n_select", low=0, high=6, step=2)
     batch_size = trial.suggest_int("batch_size", low=16, high=32, step=16)
@@ -62,7 +62,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
 
     # Module 2
     m2 = trial.suggest_categorical(
-        "m2", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
+        "m2", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass",]
     )
     m2_args = []
     m2_repeat = trial.suggest_int("m2/repeat", 1, 5)
@@ -97,6 +97,11 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m2_hs = trial.suggest_categorical("m2/v3_hs", [0, 1])
         # k t c SE HS s
         m2_args = [m2_kernel, m2_t, m2_c, m2_se, m2_hs, m2_stride]
+    elif m2 == "ECAInvertedResidualv2":
+        m2_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
+        m2_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
+        m2_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m2_args = [m2_c, m2_t, m2_stride, m2_k]
     if not m2 == "Pass":
         if m2_stride == 2:
             n_stride += 1
@@ -106,7 +111,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
 
     # Module 3
     m3 = trial.suggest_categorical(
-        "m3", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Pass"]
+        "m3", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
     )
     m3_args = []
     m3_repeat = trial.suggest_int("m3/repeat", 1, 5)
@@ -138,6 +143,11 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m3_se = trial.suggest_categorical("m3/v3_se", [0, 1])
         m3_hs = trial.suggest_categorical("m3/v3_hs", [0, 1])
         m3_args = [m3_kernel, m3_t, m3_c, m3_se, m3_hs, m3_stride]
+    elif m3 == "ECAInvertedResidualv2":
+        m3_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
+        m3_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
+        m3_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m3_args = [m3_c, m3_t, m3_stride, m3_k]
     if not m3 == "Pass":
         if m3_stride == 2:
             n_stride += 1
@@ -147,7 +157,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
 
     # Module 4
     m4 = trial.suggest_categorical(
-        "m4", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Pass"]
+        "m4", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
     )
     m4_args = []
     m4_repeat = trial.suggest_int("m4/repeat", 1, 5)
@@ -182,6 +192,11 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m4_se = trial.suggest_categorical("m4/v3_se", [0, 1])
         m4_hs = trial.suggest_categorical("m4/v3_hs", [0, 1])
         m4_args = [m4_kernel, m4_t, m4_c, m4_se, m4_hs, m4_stride]
+    elif m4 == "ECAInvertedResidualv2":
+        m4_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
+        m4_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
+        m4_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m4_args = [m4_c, m4_t, m4_stride, m4_k]
     if not m4 == "Pass":
         if m4_stride == 2:
             n_stride += 1
@@ -191,7 +206,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
 
     # Module 5
     m5 = trial.suggest_categorical(
-        "m5", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Pass"]
+        "m5", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
     )
     m5_args = []
     m5_repeat = trial.suggest_int("m5/repeat", 1, 5)
@@ -227,6 +242,11 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m5_hs = trial.suggest_categorical("m5/v3_hs", [0, 1])
         m5_stride = trial.suggest_int("m5/stride", low=1, high=UPPER_STRIDE)
         m5_args = [m5_kernel, m5_t, m5_c, m5_se, m5_hs, m5_stride]
+    elif m5 == "ECAInvertedResidualv2":
+        m5_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
+        m5_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
+        m5_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m5_args = [m5_c, m5_t, m5_stride, m5_k]
     if not m5 == "Pass":
         if m5_stride == 2:
             n_stride += 1
@@ -236,7 +256,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
 
     # Module 6
     m6 = trial.suggest_categorical(
-        "m6", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Pass"]
+        "m6", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
     )
     m6_args = []
     m6_repeat = trial.suggest_int("m6/repeat", 1, 5)
@@ -271,6 +291,11 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m6_se = trial.suggest_categorical("m6/v3_se", [0, 1])
         m6_hs = trial.suggest_categorical("m6/v3_hs", [0, 1])
         m6_args = [m6_kernel, m6_t, m6_c, m6_se, m6_hs, m6_stride]
+    elif m6 == "ECAInvertedResidualv2":
+        m6_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
+        m6_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
+        m6_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m6_args = [m6_c, m6_t, m6_stride, m6_k]
     if not m6 == "Pass":
         if m6_stride == 2:
             n_stride += 1
@@ -280,7 +305,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
 
     # Module 7
     m7 = trial.suggest_categorical(
-        "m7", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Pass"]
+        "m7", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
     )
     m7_args = []
     m7_repeat = trial.suggest_int("m7/repeat", 1, 5)
@@ -316,6 +341,11 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m7_se = trial.suggest_categorical("m7/v3_se", [0, 1])
         m7_hs = trial.suggest_categorical("m7/v3_hs", [0, 1])
         m7_args = [m7_kernel, m7_t, m7_c, m7_se, m7_hs, m7_stride]
+    elif m7 == "ECAInvertedResidualv2":
+        m7_c = trial.suggest_int("m2/eca_v2_c", low=16, high=32, step=16)
+        m7_t = trial.suggest_int("m2/eca_v2_t", low=1, high=4)
+        m7_k = trial.suggest_int("m2/eca_v2_k", low=3, high=9, step=3)
+        m7_args = [m7_c, m7_t, m7_stride, m7_k]
     if not m7 == "Pass":
         if m7_stride == 2:
             n_stride += 1
@@ -375,8 +405,8 @@ def objective(trial: optuna.trial.Trial, device) -> Tuple[float, int, float]:
     # check ./data_configs/data.yaml for config information
     data_config: Dict[str, Any] = {}
     data_config["DATA_PATH"] = DATA_PATH
-    # data_config["DATASET"] = "TACO"
-    data_config["DATASET"] = "CIFAR10" #
+    data_config["DATASET"] = "TACO"
+    # data_config["DATASET"] = "CIFAR10" #
     data_config["AUG_TRAIN"] = "randaugment_train"
     data_config["AUG_TEST"] = "simple_augment_test"
     data_config["AUG_TRAIN_PARAMS"] = {
@@ -413,13 +443,19 @@ def objective(trial: optuna.trial.Trial, device) -> Tuple[float, int, float]:
         device=device,
         verbose=1,
         model_path=RESULT_MODEL_PATH,
+        trial=trial,
     )
-    trainer.train(train_loader, hyperparams["EPOCHS"], val_dataloader=val_loader)
+    # trainer.train(train_loader, hyperparams["EPOCHS"], val_dataloader=val_loader)
+    trainer.train(train_loader, hyperparams["EPOCHS"], val_dataloader=None)
     loss, f1_score, acc_percent = trainer.test(model, test_dataloader=val_loader)
+
+    
+
     params_nums = count_model_params(model)
 
     model_info(model, verbose=True)
-    return f1_score, params_nums, mean_time
+    return f1_score, params_nums, mean_time  # multi-objective optimization을 할경우 pruning이 불가하다.
+    # return f1_score
 
 
 def get_best_trial_with_condition(optuna_study: optuna.study.Study) -> Dict[str, Any]:
@@ -437,7 +473,7 @@ def get_best_trial_with_condition(optuna_study: optuna.study.Study) -> Dict[str,
         }
     )
     ## minimum condition : accuracy >= threshold
-    threshold = 0.7
+    threshold = 0.1  # 0.7
     minimum_cond = df.acc_percent >= threshold
 
     if minimum_cond.any():
@@ -462,7 +498,8 @@ def tune(gpu_id, storage: str = None):
         device = torch.device("cpu")
     elif 0 <= gpu_id < torch.cuda.device_count():
         device = torch.device(f"cuda:{gpu_id}")
-    sampler = optuna.samplers.MOTPESampler()
+    sampler = optuna.samplers.MOTPESampler()  # multi-objective optimization을 할경우 pruning이 불가하다.
+    # sampler = optuna.samplers.TPESampler()
     if storage is not None:
         print(f"****** storage url is {storage} ******")
         rdb_storage = optuna.storages.RDBStorage(url=storage)
@@ -470,13 +507,14 @@ def tune(gpu_id, storage: str = None):
     else:
         rdb_storage = None
     study = optuna.create_study(
-        directions=["maximize", "minimize", "minimize"],
-        study_name="automl101",
+        directions=["maximize", "minimize", "minimize"],  # multi-objective optimization을 할경우 pruning이 불가하다.
+        # directions=["maximize"]
+        study_name=storage,
         sampler=sampler,
         storage=rdb_storage,
         load_if_exists=True,
     )
-    study.optimize(lambda trial: objective(trial, device), n_trials=500)
+    study.optimize(lambda trial: objective(trial, device), n_trials=5)
 
     pruned_trials = [
         t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
@@ -506,6 +544,6 @@ def tune(gpu_id, storage: str = None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Optuna tuner.")
     parser.add_argument("--gpu", default=0, type=int, help="GPU id to use")
-    parser.add_argument("--storage", default="sqlite:///automl101.db", type=str, help="Optuna database storage path.")
+    parser.add_argument("--storage", default="sqlite:///automl1.db", type=str, help="Optuna database storage path.")
     args = parser.parse_args()
     tune(args.gpu, storage=args.storage if args.storage != "" else None)
