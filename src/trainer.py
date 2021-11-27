@@ -82,8 +82,7 @@ class TorchTrainer:
         self,
         model: nn.Module,
         criterion: nn.Module,
-        optimizer: optim.Optimizer,
-        scheduler,
+        hyperparams: dict,
         model_path: str,
         scaler=None,
         device: torch.device = "cpu",
@@ -98,6 +97,25 @@ class TorchTrainer:
             device: torch device
             verbose: verbosity level.
         """
+        if hyperparams["optimizer"] == "sgd":
+            optimizer = optim.SGD(model.parameters(), lr=hyperparams["LR"], momentum=0.9, weight_decay=5e-4)
+        elif hyperparams["optimizer"] == "adam":
+            optimizer = optim.Adam(model.parameters(), lr=hyperparams["LR"], weight_decay=5e-4)
+        elif hyperparams["optimizer"] == "adamw":
+            optimizer = optim.AdamW(model.parameters(), lr=hyperparams["LR"], weight_decay=5e-4)
+        else : 
+            optimizer = hyperparams["optimizer"]
+
+        if hyperparams["scheduler"] == "cosine":
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=hyperparams['EPOCHS'])
+        elif hyperparams["scheduler"] == "reduce":
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, threshold_mode='abs',min_lr=1e-6)
+        elif hyperparams["scheduler"] == "None":
+            scheduler = None
+        else : 
+            scheduler = hyperparams["scheduler"]
+        
+        print(hyperparams)
 
         self.model = model
         self.model_path = model_path
@@ -154,7 +172,8 @@ class TorchTrainer:
                 else:
                     loss.backward()
                     self.optimizer.step()
-                self.scheduler.step()
+
+                
 
                 _, pred = torch.max(outputs, 1)
                 total += labels.size(0)
@@ -171,10 +190,17 @@ class TorchTrainer:
                     f"F1(macro): {f1_score(y_true=gt, y_pred=preds, labels=label_list, average='macro', zero_division=0):.2f}"
                 )
             pbar.close()
-
+            
             _, test_f1, test_acc = self.test(
                 model=self.model, test_dataloader=val_dataloader
             )
+
+            if self.scheduler is not None:
+                if self.scheduler == "cosine":
+                    self.scheduler.step()
+                elif self.scheduler == "reduce":
+                    self.scheduler.step(test_f1)
+            
             if best_test_f1 > test_f1:
                 continue
             best_test_acc = test_acc
