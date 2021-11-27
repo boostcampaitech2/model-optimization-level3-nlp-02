@@ -29,6 +29,8 @@ __all__ = [
     "InvertedResidualv2",
     "InvertedResidualv3",
     "Fire",
+    "ECAInvertedResidualv2",
+    "ECAInvertedResidualv3",
     "BottleneckGenerator",
     "FixedConvGenerator",
     "ConvGenerator",
@@ -42,4 +44,6 @@ __all__ = [
     "InvertedResidualv3Generator",
     "FireGenerator",
     "DropoutGenerator",
+    "ECAInvertedResidualv2Generator",
+    "ECAInvertedResidualv3Generator",
 ]

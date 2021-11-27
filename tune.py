@@ -61,11 +61,8 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     model.append([m1_repeat, m1, m1_args])
 
     # Module 2
-    # m2 = trial.suggest_categorical(
-    #     "m2", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass",]
-    # )
     m2 = trial.suggest_categorical(
-        "m2", ["ECAInvertedResidualv2",]
+        "m2", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass",]
     )
     m2_args = []
     m2_repeat = trial.suggest_int("m2/repeat", 1, 5)
@@ -127,12 +124,8 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         model.append([m2_repeat, m2, m2_args])
 
     # Module 3
-    # m3 = trial.suggest_categorical(
-    #     "m3", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"]
-    # )
     m3 = trial.suggest_categorical(
-        "m3", [ "ECAInvertedResidualv3",]
-        "m3", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
+        "m3", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"]
     )
     m3_args = []
     m3_repeat = trial.suggest_int("m3/repeat", 1, 5)
@@ -192,8 +185,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
 
     # Module 4
     m4 = trial.suggest_categorical(
-        "m4", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
-        "m4", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
+        "m4", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"]
     )
     m4_args = []
     m4_repeat = trial.suggest_int("m4/repeat", 1, 5)
@@ -240,6 +232,13 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m4_t = trial.suggest_int("m4/eca_v2_t", low=1, high=4)
         m4_k = trial.suggest_int("m4/eca_v2_k", low=3, high=9, step=2)
         m4_args = [m4_c, m4_t, m4_stride, m4_k]
+    elif m4 == "ECAInvertedResidualv3":
+        m4_kernel = trial.suggest_int("m4/kernel_size", low=3, high=5, step=2)
+        m4_t = round(trial.suggest_float("m4/v3_t", low=1.0, high=6.0, step=0.1), 1)
+        m4_c = trial.suggest_int("m4/v3_c", low=16, high=40, step=8)
+        m4_k_eca = trial.suggest_int("m4/v3_k_eca", low=3, high=9, step=2)
+        m4_hs = trial.suggest_categorical("m4/v3_hs", [0, 1])
+        m4_args = [m4_kernel, m4_t, m4_c, m4_k_eca, m4_hs, m4_stride]
     if not m4 == "Pass":
         if m4_stride == 2:
             n_stride += 1
@@ -249,8 +248,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
 
     # Module 5
     m5 = trial.suggest_categorical(
-        "m5", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
-        "m5", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
+        "m5", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"]
     )
     m5_args = []
     m5_repeat = trial.suggest_int("m5/repeat", 1, 5)
@@ -298,6 +296,13 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m5_t = trial.suggest_int("m5/eca_v2_t", low=1, high=4)
         m5_k = trial.suggest_int("m5/eca_v2_k", low=3, high=9, step=2)
         m5_args = [m5_c, m5_t, m5_stride, m5_k]
+    elif m5 == "ECAInvertedResidualv3":
+        m5_kernel = trial.suggest_int("m5/kernel_size", low=3, high=5, step=2)
+        m5_t = round(trial.suggest_float("m5/v3_t", low=1.0, high=6.0, step=0.1), 1)
+        m5_c = trial.suggest_int("m5/v3_c", low=16, high=40, step=8)
+        m5_k_eca = trial.suggest_int("m5/v3_k_eca", low=3, high=9, step=2)
+        m5_hs = trial.suggest_categorical("m5/v3_hs", [0, 1])
+        m5_args = [m5_kernel, m5_t, m5_c, m5_k_eca, m5_hs, m5_stride]
     if not m5 == "Pass":
         if m5_stride == 2:
             n_stride += 1
@@ -307,8 +312,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
 
     # Module 6
     m6 = trial.suggest_categorical(
-        "m6", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
-        "m6", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
+        "m6", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"]
     )
     m6_args = []
     m6_repeat = trial.suggest_int("m6/repeat", 1, 5)
@@ -355,6 +359,13 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m6_t = trial.suggest_int("m6/eca_v2_t", low=1, high=4)
         m6_k = trial.suggest_int("m6/eca_v2_k", low=3, high=9, step=2)
         m6_args = [m6_c, m6_t, m6_stride, m6_k]
+    elif m6 == "ECAInvertedResidualv3":
+        m6_kernel = trial.suggest_int("m6/kernel_size", low=3, high=5, step=2)
+        m6_t = round(trial.suggest_float("m6/v3_t", low=1.0, high=6.0, step=0.1), 1)
+        m6_c = trial.suggest_int("m6/v3_c", low=16, high=40, step=8)
+        m6_k_eca = trial.suggest_int("m6/v3_k_eca", low=3, high=9, step=2)
+        m6_hs = trial.suggest_categorical("m6/v3_hs", [0, 1])
+        m6_args = [m6_kernel, m6_t, m6_c, m6_k_eca, m6_hs, m6_stride]
     if not m6 == "Pass":
         if m6_stride == 2:
             n_stride += 1
@@ -364,8 +375,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
 
     # Module 7
     m7 = trial.suggest_categorical(
-        "m7", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
-        "m7", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
+        "m7", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"]
     )
     m7_args = []
     m7_repeat = trial.suggest_int("m7/repeat", 1, 5)
@@ -413,6 +423,13 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m7_t = trial.suggest_int("m7/eca_v2_t", low=1, high=4)
         m7_k = trial.suggest_int("m7/eca_v2_k", low=3, high=9, step=2)
         m7_args = [m7_c, m7_t, m7_stride, m7_k]
+    elif m7 == "ECAInvertedResidualv3":
+        m7_kernel = trial.suggest_int("m7/kernel_size", low=3, high=5, step=2)
+        m7_t = round(trial.suggest_float("m7/v3_t", low=1.0, high=6.0, step=0.1), 1)
+        m7_c = trial.suggest_int("m7/v3_c", low=16, high=40, step=8)
+        m7_k_eca = trial.suggest_int("m7/v3_k_eca", low=3, high=9, step=2)
+        m7_hs = trial.suggest_categorical("m7/v3_hs", [0, 1])
+        m7_args = [m7_kernel, m7_t, m7_c, m7_k_eca, m7_hs, m7_stride]
     if not m7 == "Pass":
         if m7_stride == 2:
             n_stride += 1
