@@ -3,6 +3,10 @@ exp*
 *.db
 *.pt
 *.ts
+<<<<<<< HEAD
 __*
 
+=======
+__pycache*
+>>>>>>> dev
 
