@@ -2,6 +2,7 @@
 - Author: Junghoon Kim, Jongsun Shin
 - Contact: placidus36@gmail.com, shinn1897@makinarocks.ai
 """
+import math
 import optuna
 import logging
 import sys
@@ -24,15 +25,15 @@ RESULT_MODEL_PATH = "./result_model.pt" # result model will be saved in this pat
 
 def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
     """Search hyperparam from user-specified search space."""
-    epochs = trial.suggest_int("epochs", low=2, high=3, step=50) #original 50
-    img_size = trial.suggest_categorical("img_size", [96, 112, 168, 224])
+    epochs = trial.suggest_int("epochs", low=10, high=10, step=50) #original 50
+    # img_size = trial.suggest_categorical("img_size", [96, 112, 168, 224])
     n_select = trial.suggest_int("n_select", low=0, high=6, step=2)
-    batch_size = trial.suggest_int("batch_size", low=16, high=32, step=16)
+    # batch_size = trial.suggest_int("batch_size", low=16, high=32, step=16)
     return {
         "EPOCHS": epochs,
-        "IMG_SIZE": img_size,
+        # "IMG_SIZE": img_size,
         "n_select": n_select,
-        "BATCH_SIZE": batch_size,
+        # "BATCH_SIZE": batch_size,
     }
 
 
@@ -59,6 +60,8 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         # DWConv args: [out_channel, kernel_size, stride, padding_size, activation]
         m1_args = [m1_out_channel, 3, m1_stride, None, m1_activation]
     model.append([m1_repeat, m1, m1_args])
+
+    
 
     # Module 2
     m2 = trial.suggest_categorical(
@@ -97,6 +100,12 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m2_hs = trial.suggest_categorical("m2/v3_hs", [0, 1])
         # k t c SE HS s
         m2_args = [m2_kernel, m2_t, m2_c, m2_se, m2_hs, m2_stride]
+    elif m2 == "BottleneckAttn":
+        m2_out_channel = 1024
+        m2_feature_size = 32
+        m2_stride = trial.suggest_int("m2/stride", low=1, high=UPPER_STRIDE)
+        m2_num_heads = trial.suggest_int("m2/num_heads", low=4, high=8, step=4)
+        m2_args = [m2_out_channel, m2_feature_size, m2_stride, m2_num_heads]
     if not m2 == "Pass":
         if m2_stride == 2:
             n_stride += 1
@@ -356,10 +365,10 @@ def objective(trial: optuna.trial.Trial, device) -> Tuple[float, int, float]:
     img_size = 32
     model_config["INPUT_SIZE"] = [img_size, img_size]
     model_config["depth_multiple"] = trial.suggest_categorical(
-        "depth_multiple", [0.25, 0.5, 0.75, 1.0]
+        "depth_multiple", [1.0] # [0.25, 0.5, 0.75, 1.0]
     )
     model_config["width_multiple"] = trial.suggest_categorical(
-        "width_multiple", [0.25, 0.5, 0.75, 1.0]
+        "width_multiple", [1.0] # [0.25, 0.5, 0.75, 1.0]
     )
     model_config["backbone"], module_info = search_model(trial)
     hyperparams = search_hyperparam(trial)
@@ -378,9 +387,11 @@ def objective(trial: optuna.trial.Trial, device) -> Tuple[float, int, float]:
         "n_select": hyperparams["n_select"],
     }
     data_config["AUG_TEST_PARAMS"] = None
-    data_config["BATCH_SIZE"] = hyperparams["BATCH_SIZE"]
+    # data_config["BATCH_SIZE"] = hyperparams["BATCH_SIZE"]
+    data_config["BATCH_SIZE"] = 16
     data_config["VAL_RATIO"] = 0.8
-    data_config["IMG_SIZE"] = hyperparams["IMG_SIZE"]
+    # data_config["IMG_SIZE"] = hyperparams["IMG_SIZE"]
+    data_config["IMG_SIZE"] = 32
 
     mean_time = check_runtime(
         model.model,

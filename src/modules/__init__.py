@@ -1,6 +1,7 @@
 """PyTorch Module and ModuleGenerator."""
 
 from src.modules.base_generator import GeneratorAbstract, ModuleGenerator
+from src.modules.bottleneck_transformer import BottleneckAttn, BottleneckAttnGenerator
 from src.modules.bottleneck import Bottleneck, BottleneckGenerator
 from src.modules.conv import Conv, ConvGenerator, FixedConvGenerator
 from src.modules.dwconv import DWConv, DWConvGenerator
@@ -18,6 +19,7 @@ __all__ = [
     "ModuleGenerator",
     "GeneratorAbstract",
     "Bottleneck",
+    "BottleneckAttn"
     "Conv",
     "DWConv",
     "Linear",
@@ -26,6 +28,7 @@ __all__ = [
     "InvertedResidualv3",
     "Fire",
     "BottleneckGenerator",
+    "BottleneckAttnGenerator",
     "FixedConvGenerator",
     "ConvGenerator",
     "LinearGenerator",
