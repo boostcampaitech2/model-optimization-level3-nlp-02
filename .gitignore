@@ -3,5 +3,6 @@ exp*
 *.db
 *.pt
 *.ts
+__pycache*
 
 experiments/
