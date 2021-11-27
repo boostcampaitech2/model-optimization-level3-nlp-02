@@ -27,12 +27,12 @@ def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
     epochs = trial.suggest_int("epochs", low=2, high=5, step=1) #original 50
     img_size = trial.suggest_categorical("img_size", [96, 112, 168, 224])
     n_select = trial.suggest_int("n_select", low=0, high=6, step=2)
-    # batch_size = trial.suggest_int("batch_size", low=16, high=32, step=16)
+    batch_size = trial.suggest_int("batch_size", low=16, high=32, step=16)
     return {
         "EPOCHS": epochs,
-        # "IMG_SIZE": img_size,
+        "IMG_SIZE": img_size,
         "n_select": n_select,
-        # "BATCH_SIZE": batch_size,
+        "BATCH_SIZE": batch_size,
     }
 
 
@@ -456,7 +456,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     return model, module_info
 
 
-def objective(trial: optuna.trial.Trial, device) -> Tuple[float, int, float]:
+def objective(trial: optuna.trial.Trial, device, no_val) -> Tuple[float, int, float]:
     """Optuna objective.
     Args:
         trial
@@ -525,8 +525,7 @@ def objective(trial: optuna.trial.Trial, device) -> Tuple[float, int, float]:
         model_path=RESULT_MODEL_PATH,
         trial=trial,
     )
-    # trainer.train(train_loader, hyperparams["EPOCHS"], val_dataloader=val_loader)
-    trainer.train(train_loader, hyperparams["EPOCHS"], val_dataloader=None)
+    trainer.train(train_loader, hyperparams["EPOCHS"], val_dataloader=None if no_val else val_loader)
     loss, f1_score, acc_percent = trainer.test(model, test_dataloader=val_loader)
 
     
@@ -573,7 +572,7 @@ def get_best_trial_with_condition(optuna_study: optuna.study.Study) -> Dict[str,
     return best_trial_
 
 
-def tune(gpu_id, storage: str = None):
+def tune(gpu_id, storage: str = None, no_val=True):
     if not torch.cuda.is_available():
         device = torch.device("cpu")
     elif 0 <= gpu_id < torch.cuda.device_count():
@@ -594,7 +593,7 @@ def tune(gpu_id, storage: str = None):
         storage=rdb_storage,
         load_if_exists=True,
     )
-    study.optimize(lambda trial: objective(trial, device), n_trials=5)
+    study.optimize(lambda trial: objective(trial, device, no_val), n_trials=5)
 
     pruned_trials = [
         t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
@@ -625,5 +624,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Optuna tuner.")
     parser.add_argument("--gpu", default=0, type=int, help="GPU id to use")
     parser.add_argument("--storage", default="sqlite:///automl1.db", type=str, help="Optuna database storage path.")
+    parser.add_argument("--no_val", default=False, action='store_true', help="Whether to perform validation when training")
     args = parser.parse_args()
-    tune(args.gpu, storage=args.storage if args.storage != "" else None)
+    tune(args.gpu, storage=args.storage if args.storage != "" else None, no_val=args.no_val)
