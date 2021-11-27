@@ -27,12 +27,12 @@ def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
     epochs = trial.suggest_int("epochs", low=2, high=5, step=1) #original 50
     img_size = trial.suggest_categorical("img_size", [96, 112, 168, 224])
     n_select = trial.suggest_int("n_select", low=0, high=6, step=2)
-    batch_size = trial.suggest_int("batch_size", low=16, high=32, step=16)
+    # batch_size = trial.suggest_int("batch_size", low=16, high=32, step=16)
     return {
         "EPOCHS": epochs,
-        "IMG_SIZE": img_size,
+        # "IMG_SIZE": img_size,
         "n_select": n_select,
-        "BATCH_SIZE": batch_size,
+        # "BATCH_SIZE": batch_size,
     }
 
 
@@ -81,6 +81,13 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
             "m2/activation", ["ReLU", "Hardswish"]
         )
         m2_args = [m2_out_channel, m2_kernel, m2_stride, None, 1, m2_activation]
+    elif m2 == "Fire":
+        """ TO DO: 검토 및 추가수정 필요
+        """
+        # Fire args: [squeeze_planes, expand1x1_planes, expand3x3_planes]
+        m2_sqz = trial.suggest_int("m2/sqz", low=16, high=64, step=16)
+        m2_exp1 = trial.suggest_int("m2/exp1", low=64, high=256, step=64)
+        m2_args = [m2_sqz, m2_exp1, m2_exp1]
     elif m2 == "DWConv":
         # DWConv args: [out_channel, kernel_size, stride, padding_size, activation]
         m2_kernel = trial.suggest_int("m2/kernel_size", low=1, high=5, step=2)
@@ -125,6 +132,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     # )
     m3 = trial.suggest_categorical(
         "m3", [ "ECAInvertedResidualv3",]
+        "m3", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
     )
     m3_args = []
     m3_repeat = trial.suggest_int("m3/repeat", 1, 5)
@@ -145,6 +153,13 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
             "m3/activation", ["ReLU", "Hardswish"]
         )
         m3_args = [m3_out_channel, m3_kernel, m3_stride, None, m3_activation]
+    elif m3 == "Fire":
+        """ TO DO: 검토 및 추가수정 필요
+        """
+        # Fire args: [squeeze_planes, expand1x1_planes, expand3x3_planes]
+        m3_sqz = trial.suggest_int("m3/sqz", low=16, high=64, step=16)
+        m3_exp1 = trial.suggest_int("m3/exp1", low=64, high=256, step=64)
+        m3_args = [m3_sqz, m3_exp1, m3_exp1]
     elif m3 == "InvertedResidualv2":
         m3_c = trial.suggest_int("m3/v2_c", low=8, high=32, step=8)
         m3_t = trial.suggest_int("m3/v2_t", low=1, high=8)
@@ -178,6 +193,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     # Module 4
     m4 = trial.suggest_categorical(
         "m4", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
+        "m4", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
     )
     m4_args = []
     m4_repeat = trial.suggest_int("m4/repeat", 1, 5)
@@ -201,6 +217,13 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
             "m4/activation", ["ReLU", "Hardswish"]
         )
         m4_args = [m4_out_channel, m4_kernel, m4_stride, None, m4_activation]
+    elif m4 == "Fire":
+        """ TO DO: 검토 및 추가수정 필요
+        """
+        # Fire args: [squeeze_planes, expand1x1_planes, expand3x3_planes]
+        m4_sqz = trial.suggest_int("m4/sqz", low=16, high=64, step=16)
+        m4_exp1 = trial.suggest_int("m4/exp1", low=64, high=256, step=64)
+        m4_args = [m4_sqz, m4_exp1, m4_exp1]
     elif m4 == "InvertedResidualv2":
         m4_c = trial.suggest_int("m4/v2_c", low=8, high=64, step=8)
         m4_t = trial.suggest_int("m4/v2_t", low=1, high=8)
@@ -227,6 +250,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     # Module 5
     m5 = trial.suggest_categorical(
         "m5", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
+        "m5", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
     )
     m5_args = []
     m5_repeat = trial.suggest_int("m5/repeat", 1, 5)
@@ -249,6 +273,13 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         )
         m5_stride = trial.suggest_int("m5/stride", low=1, high=UPPER_STRIDE)
         m5_args = [m5_out_channel, m5_kernel, m5_stride, None, m5_activation]
+    elif m5 == "Fire":
+        """ TO DO: 검토 및 추가수정 필요
+        """
+        # Fire args: [squeeze_planes, expand1x1_planes, expand3x3_planes]
+        m5_sqz = trial.suggest_int("m5/sqz", low=16, high=64, step=16)
+        m5_exp1 = trial.suggest_int("m5/exp1", low=64, high=256, step=64)
+        m5_args = [m5_sqz, m5_exp1, m5_exp1]
     elif m5 == "InvertedResidualv2":
         m5_c = trial.suggest_int("m5/v2_c", low=16, high=128, step=16)
         m5_t = trial.suggest_int("m5/v2_t", low=1, high=8)
@@ -277,6 +308,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     # Module 6
     m6 = trial.suggest_categorical(
         "m6", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
+        "m6", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
     )
     m6_args = []
     m6_repeat = trial.suggest_int("m6/repeat", 1, 5)
@@ -300,6 +332,13 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
             "m6/activation", ["ReLU", "Hardswish"]
         )
         m6_args = [m6_out_channel, m6_kernel, m6_stride, None, m6_activation]
+    elif m6 == "Fire":
+        """ TO DO: 검토 및 추가수정 필요
+        """
+        # Fire args: [squeeze_planes, expand1x1_planes, expand3x3_planes]
+        m6_sqz = trial.suggest_int("m6/sqz", low=16, high=64, step=16)
+        m6_exp1 = trial.suggest_int("m6/exp1", low=64, high=256, step=64)
+        m6_args = [m6_sqz, m6_exp1, m6_exp1]
     elif m6 == "InvertedResidualv2":
         m6_c = trial.suggest_int("m6/v2_c", low=16, high=128, step=16)
         m6_t = trial.suggest_int("m6/v2_t", low=1, high=8)
@@ -326,6 +365,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     # Module 7
     m7 = trial.suggest_categorical(
         "m7", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "ECAInvertedResidualv2", "Pass"]
+        "m7", ["Conv", "DWConv", "InvertedResidualv2", "InvertedResidualv3", "Fire", "Pass"]
     )
     m7_args = []
     m7_repeat = trial.suggest_int("m7/repeat", 1, 5)
@@ -350,6 +390,13 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
             "m7/activation", ["ReLU", "Hardswish"]
         )
         m7_args = [m7_out_channel, m7_kernel, m7_stride, None, m7_activation]
+    elif m7 == "Fire":
+        """ TO DO: 검토 및 추가수정 필요
+        """
+        # Fire args: [squeeze_planes, expand1x1_planes, expand3x3_planes]
+        m7_sqz = trial.suggest_int("m7/sqz", low=16, high=64, step=16)
+        m7_exp1 = trial.suggest_int("m7/exp1", low=64, high=256, step=64)
+        m7_args = [m7_sqz, m7_exp1, m7_exp1]
     elif m7 == "InvertedResidualv2":
         m7_c = trial.suggest_int("m7/v2_c", low=16, high=160, step=16)
         m7_t = trial.suggest_int("m7/v2_t", low=1, high=8)
