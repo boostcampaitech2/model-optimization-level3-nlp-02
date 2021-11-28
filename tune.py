@@ -61,11 +61,9 @@ def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
 def add_module(trial, depth, n_pooling, image_size):
     m_name = 'm'+str(depth)
     if depth >= 6 and image_size <= 48 :
-        module_list = ["BottleneckAttn"] 
-
-        # module_list = ["Conv", "DWConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "Bottleneck", "BottleneckAttn", "Pass"] 
+        module_list = ["Conv", "DWConv", "MBConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "Bottleneck", "BottleneckAttn", "Pass"] 
     else :
-        module_list = ["Conv", "DWConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "Bottleneck", "Pass"]
+        module_list = ["Conv", "DWConv", "MBConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "Bottleneck", "Pass"]
 
     m_args = []
 
@@ -84,10 +82,9 @@ def add_module(trial, depth, n_pooling, image_size):
         
     # Module
     if depth >= 6 and image_size <= 48:
-        module_idx = 0
-        # module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=7)
+        module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=9)
     else:
-        module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=6)
+        module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=8)
     m = module_list[module_idx-1]
     if m == "Conv":
         # Conv args: [out_channel, kernel_size, stride, padding, groups, activation]
@@ -105,6 +102,11 @@ def add_module(trial, depth, n_pooling, image_size):
             m_name+"/activation", ["ReLU", "Hardswish"]
         )
         m_args = [m_out_channel, m_kernel, m_stride, None, m_activation]
+    elif m == "MBConv":
+        m_kernel = trial.suggest_int(m_name+"/kernel_size", low=3, high=5, step=2)
+        m_out_channel = trial.suggest_int(m_name+"/out_channel_mb", low=16*depth, high=32*depth, step=16)
+        m_exp_ratio = trial.suggest_int(m_name+"/exp_ratio_mb", low=1, high=4)
+        m_args = [m_exp_ratio, m_out_channel, m_stride, m_kernel]
     elif m == "InvertedResidualv2":
         m_out_channel = trial.suggest_int(m_name+"/out_channel_v2", low=16*depth, high=32*depth, step=16)
         m_exp_ratio = trial.suggest_int(m_name+"/exp_ratio_v2", low=1, high=4)
@@ -120,6 +122,7 @@ def add_module(trial, depth, n_pooling, image_size):
         # Fire args: [squeeze_planes, expand1x1_planes, expand3x3_planes]
         m_sqz = trial.suggest_int(m_name+"/sqz", low=16, high=64, step=16)
         m_exp1 = trial.suggest_int(m_name+"/exp1", low=64, high=256, step=64)
+        m_stride = 1
         m_args = [m_sqz, m_exp1, m_exp1]
     elif m == 'Bottleneck':
         m_out_channel = trial.suggest_int(m_name+"/out_channel_b", low=16*depth, high=32*depth, step=16)
@@ -131,14 +134,6 @@ def add_module(trial, depth, n_pooling, image_size):
         m_feature_size = image_size
         m_num_heads = trial.suggest_int("m/num_heads", low=4, high=8, step=4)
         m_args = [m_out_channel, m_feature_size, m_stride, m_num_heads]
-        
-    ########### 추가 수정할 부분
-    elif m == "MBConv":
-        m_kernel = trial.suggest_int(m_name+"/kernel_size", low=3, high=5, step=2)
-        m_out_channel = trial.suggest_int(m_name+"/c_mb", low=16*depth, high=32*depth, step=16)
-        m_exp_ratio = trial.suggest_int(m_name+"/t_mb", low=1, high=4)
-        m_se = trial.suggest_int(m_name+"/se_mb", low=0, high=1, step=1)
-        m_args = [m_exp_ratio, m_out_channel, m_stride, m_kernel, m_se]
 
     image_size = calculate_feat_size(image_size, m_kernel, m_stride)
 
@@ -240,6 +235,8 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
         float: score1(e.g. accuracy)
         int: score2(e.g. params)
     """
+    global BEST_MODEL_SCORE
+    
     if args.model_name is None : 
         hyperparams = DEFAULT
         model_config: Dict[str, Any] = {}
@@ -312,6 +309,7 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
 
     model_info(model, verbose=True)
     if f1_score > BEST_MODEL_SCORE:
+        BEST_MODEL_SCORE = f1_score
         file_name = f"{f1_score:.2%}_{params_nums}_{mean_time:.3f}.yaml"
         if args.model_name: # Search hyperparams
             save_path = os.path.join('./configs/data', file_name)

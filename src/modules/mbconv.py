@@ -23,7 +23,7 @@ class MBConv(nn.Module):
         kernel_size,
         stride,
         reduction_ratio=4,
-        drop_connect_rate=0.0,
+        drop_connect_rate=0.2,
     ):
         super(MBConv, self).__init__()
         self.drop_connect_rate = drop_connect_rate
