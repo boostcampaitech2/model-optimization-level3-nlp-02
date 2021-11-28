@@ -6,3 +6,6 @@ exp*
 __pycache*
 
 experiments/
+
+input/cifar10
+기타
