@@ -1,6 +1,0 @@
-elif m2 == "BottleneckAttn":
-        m2_out_channel = 1024
-        m2_feature_size = 32
-        m2_stride = trial.suggest_int("m2/stride", low=1, high=UPPER_STRIDE)
-        m2_num_heads = trial.suggest_int("m2/num_heads", low=4, high=8, step=4)
-        m2_args = [m2_out_channel, m2_feature_size, m2_stride, m2_num_heads]
