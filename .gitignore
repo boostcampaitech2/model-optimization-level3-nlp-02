@@ -1,12 +1,9 @@
+__pycache*
+
 exp*
+
 .ipynb*
+
 *.db
 *.pt
 *.ts
-<<<<<<< HEAD
-__*
-
-=======
-__pycache*
->>>>>>> dev
-
