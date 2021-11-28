@@ -61,9 +61,9 @@ def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
 def add_module(trial, depth, n_pooling, image_size):
     m_name = 'm'+str(depth)
     if depth >= 6 and image_size <= 48 :
-        module_list = ["Conv", "DWConv", "MBConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "Bottleneck", "BottleneckAttn", "Pass"] 
+        module_list = ["Conv", "DWConv", "MBConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "Bottleneck", "BottleneckAttn", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"] 
     else :
-        module_list = ["Conv", "DWConv", "MBConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "Bottleneck", "Pass"]
+        module_list = ["Conv", "DWConv", "MBConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "Bottleneck", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"]
 
     m_args = []
 
@@ -82,9 +82,9 @@ def add_module(trial, depth, n_pooling, image_size):
         
     # Module
     if depth >= 6 and image_size <= 48:
-        module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=9)
+        module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=11)
     else:
-        module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=8)
+        module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=10)
     m = module_list[module_idx-1]
     if m == "Conv":
         # Conv args: [out_channel, kernel_size, stride, padding, groups, activation]
@@ -134,6 +134,19 @@ def add_module(trial, depth, n_pooling, image_size):
         m_feature_size = image_size
         m_num_heads = trial.suggest_int("m/num_heads", low=4, high=8, step=4)
         m_args = [m_out_channel, m_feature_size, m_stride, m_num_heads]
+    elif m == "ECAInvertedResidualv2":
+        m_out_channel = trial.suggest_int(m_name+"/out_channel_v2", low=16, high=32, step=16)
+        m_exp_ratio = trial.suggest_int(m_name+"/exp_ratio_v2", low=1, high=4)
+        m_k_eca = trial.suggest_int(m_name+"/v2_k_eca", low=3, high=9, step=2)
+        m_args = [m_out_channel, m_exp_ratio, m_stride, m_k_eca]
+    elif m == "ECAInvertedResidualv3":
+        m_kernel = trial.suggest_int(m_name+"/kernel_size", low=3, high=5, step=2)
+        m_exp_ratio = round(trial.suggest_float(m_name+"/exp_ratio_v3", low=1.0, high=6.0, step=0.1), 1)
+        m_out_channel = trial.suggest_int(m_name+"/out_channel_v3", low=16, high=40, step=8)
+        m_k_eca = trial.suggest_int(m_name+"/v3_k_eca", low=3, high=9, step=2)
+        m_hs = trial.suggest_categorical(m_name+"/v3_hs", [0, 1])
+        m_args = [m_kernel, m_exp_ratio, m_out_channel, m_k_eca, m_hs, m_stride]
+
 
     image_size = calculate_feat_size(image_size, m_kernel, m_stride)
 
@@ -416,6 +429,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", default=0, type=int, help="GPU id to use")
     parser.add_argument("--storage", default="sqlite:///automl_fire+.db", type=str, help="Optuna database storage path.")
     parser.add_argument("--model_name", default=None, type=str, help="Model config file name (if not None, search hyperparams)")
+    parser.add_argument("--storage", default=f"mysql://metamong:{input('DB password: ')}@34.82.27.63/test", type=str, help="Optuna database storage path.")
     
     args = parser.parse_args()
 
