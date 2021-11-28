@@ -53,7 +53,7 @@ def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
 
 def add_module(trial, depth, n_pooling):
     m_name = 'm'+str(depth)
-    module_list = ["Conv", "DWConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "Pass"]    
+    module_list = ["Conv", "DWConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"]    
     
     m_args = []
 
@@ -69,7 +69,7 @@ def add_module(trial, depth, n_pooling):
         m_repeat = 1
         
     # Module
-    module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=5)
+    module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=8)
     m = module_list[module_idx-1]
     if m == "Conv":
         # Conv args: [out_channel, kernel_size, stride, padding, groups, activation]
@@ -103,6 +103,18 @@ def add_module(trial, depth, n_pooling):
         m_sqz = trial.suggest_int(m_name+"/sqz", low=16, high=64, step=16)
         m_exp1 = trial.suggest_int(m_name+"/exp1", low=64, high=256, step=64)
         m_args = [m_sqz, m_exp1, m_exp1]
+    elif m == "ECAInvertedResidualv2":
+        m_out_channel = trial.suggest_int(m_name+"/out_channel_v2", low=16, high=32, step=16)
+        m_exp_ratio = trial.suggest_int(m_name+"/exp_ratio_v2", low=1, high=4)
+        m_k_eca = trial.suggest_int(m_name+"/v2_k_eca", low=3, high=9, step=2)
+        m_args = [m_out_channel, m_exp_ratio, m_stride, m_k_eca]
+    elif m == "ECAInvertedResidualv3":
+        m_kernel = trial.suggest_int(m_name+"/kernel_size", low=3, high=5, step=2)
+        m_exp_ratio = round(trial.suggest_float(m_name+"/exp_ratio_v3", low=1.0, high=6.0, step=0.1), 1)
+        m_out_channel = trial.suggest_int(m_name+"/out_channel_v3", low=16, high=40, step=8)
+        m_k_eca = trial.suggest_int(m_name+"/v3_k_eca", low=3, high=9, step=2)
+        m_hs = trial.suggest_categorical(m_name+"/v3_hs", [0, 1])
+        m_args = [m_kernel, m_exp_ratio, m_out_channel, m_k_eca, m_hs, m_stride]
         
     ########### 추가 수정할 부분
     elif m == "MBConv":
