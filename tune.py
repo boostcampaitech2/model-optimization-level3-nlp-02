@@ -398,7 +398,8 @@ def tune(gpu_id, args, storage: str = None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Optuna tuner.")
     parser.add_argument("--gpu", default=0, type=int, help="GPU id to use")
-    parser.add_argument("--storage", default="sqlite:///automl_fire+.db", type=str, help="Optuna database storage path.")
+    # parser.add_argument("--storage", default="sqlite:///automl_fire+.db", type=str, help="Optuna database storage path.")
+    parser.add_argument("--storage", default=f"mysql://metamong:{input('DB password: ')}@34.82.27.63/test", type=str, help="Optuna database storage path.")
     parser.add_argument("--model_name", default=None, type=str, help="Model config file name (if not None, search hyperparams)")
     
     args = parser.parse_args()
