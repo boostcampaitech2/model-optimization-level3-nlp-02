@@ -146,9 +146,14 @@ def add_module(trial, depth, n_pooling, image_size):
         m_k_eca = trial.suggest_int(m_name+"/v3_k_eca", low=3, high=9, step=2)
         m_hs = trial.suggest_categorical(m_name+"/v3_hs", [0, 1])
         m_args = [m_kernel, m_exp_ratio, m_out_channel, m_k_eca, m_hs, m_stride]
+        image_size = 1
+    
 
-
-    image_size = calculate_feat_size(image_size, m_kernel, m_stride)
+    # print('&&&&&&&&&&&&', m)
+    # print(f"before ####### image_size : {image_size}, m_kernel : {m_kernel}, m_stride : {m_stride}")
+    if m != "Pass":
+        image_size = calculate_feat_size(image_size, m_kernel, m_stride)
+    # print(f"after ####### image_size : {image_size}")
 
     if not m == "Pass":
         if m_stride==1:
@@ -293,7 +298,7 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
         [model_config["input_channel"]] + model_config["INPUT_SIZE"],
         device,
     )
-    model_info(model, verbose=True)
+    # model_info(model, verbose=True)
     train_loader, val_loader, _ = create_dataloader(data_config)
 
     criterion = nn.CrossEntropyLoss()
@@ -320,7 +325,7 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
     loss, f1_score, acc_percent = trainer.test(model, test_dataloader=val_loader)
     params_nums = count_model_params(model)
 
-    model_info(model, verbose=True)
+    # model_info(model, verbose=True)
     if f1_score > BEST_MODEL_SCORE:
         BEST_MODEL_SCORE = f1_score
         file_name = f"{f1_score:.2%}_{params_nums}_{mean_time:.3f}.yaml"
@@ -397,7 +402,7 @@ def tune(gpu_id, args, storage: str = None):
         storage=rdb_storage,
         load_if_exists=True,
     )
-    study.optimize(lambda trial: objective(trial, args, device), n_trials=20) # original: 500
+    study.optimize(lambda trial: objective(trial, args, device), n_trials=100) # original: 500
 
     pruned_trials = [
         t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
@@ -429,7 +434,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", default=0, type=int, help="GPU id to use")
     parser.add_argument("--storage", default="sqlite:///automl_fire+.db", type=str, help="Optuna database storage path.")
     parser.add_argument("--model_name", default=None, type=str, help="Model config file name (if not None, search hyperparams)")
-    parser.add_argument("--storage", default=f"mysql://metamong:{input('DB password: ')}@34.82.27.63/test", type=str, help="Optuna database storage path.")
+    # parser.add_argument("--storage", default=f"mysql://metamong:{input('DB password: ')}@34.82.27.63/test", type=str, help="Optuna database storage path.")
     
     args = parser.parse_args()
 
