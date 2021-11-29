@@ -1,12 +1,14 @@
+__pycache*
+
 exp*
+
 .ipynb*
+
 *.db
 *.pt
 *.ts
 __pycache*
 
-
 experiments/
 
 input/cifar10
-기타
