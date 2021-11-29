@@ -1,0 +1,75 @@
+INPUT_SIZE:
+- 112
+- 112
+backbone:
+- - 1
+  - DWConv
+  - - 21
+    - 3
+    - 1
+    - null
+    - Hardswish
+- - 6
+  - Bottleneck
+  - - 32
+- - 1
+  - Fire
+  - - 48
+    - 64
+    - 64
+- - 1
+  - Bottleneck
+  - - 96
+- - 1
+  - MaxPool
+  - - 3
+    - 2
+    - 1
+- - 1
+  - InvertedResidualv2
+  - - 96
+    - 1
+    - 2
+- - 1
+  - ECAInvertedResidualv3
+  - - 3
+    - 3.2
+    - 24
+    - 3
+    - 0
+    - 2
+- - 1
+  - InvertedResidualv2
+  - - 112
+    - 1
+    - 1
+- - 3
+  - BottleneckAttn
+  - - 1024
+    - 1
+    - 1
+    - 8
+- - 1
+  - Conv
+  - - 768
+    - 1
+    - 1
+- - 1
+  - Conv
+  - - 768
+    - 1
+    - 1
+- - 1
+  - GlobalAvgPool
+  - []
+- - 1
+  - FixedConv
+  - - 6
+    - 1
+    - 1
+    - null
+    - 1
+    - null
+depth_multiple: 0.25
+input_channel: 3
+width_multiple: 0.75

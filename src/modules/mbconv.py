@@ -23,7 +23,7 @@ class MBConv(nn.Module):
         kernel_size,
         stride,
         reduction_ratio=4,
-        drop_connect_rate=0.0,
+        drop_connect_rate=0.2,
     ):
         super(MBConv, self).__init__()
         self.drop_connect_rate = drop_connect_rate
@@ -79,25 +79,20 @@ class MBConv(nn.Module):
 
 class ConvBNReLU(nn.Sequential):
     def __init__(self, in_planes, out_planes, kernel_size, stride=1, groups=1):
-        padding = self._get_padding(kernel_size, stride)
+        padding = (kernel_size - 1) // 2
         super(ConvBNReLU, self).__init__(
-            nn.ZeroPad2d(padding),
             nn.Conv2d(
                 in_planes,
                 out_planes,
                 kernel_size,
                 stride,
-                padding=0,
+                padding=padding,
                 groups=groups,
                 bias=False,
             ),
             nn.BatchNorm2d(out_planes),
             Swish(),
         )
-
-    def _get_padding(self, kernel_size, stride):
-        p = max(kernel_size - stride, 0)
-        return [p // 2, p - p // 2, p // 2, p - p // 2]
 
 
 class SwishImplementation(torch.autograd.Function):
@@ -151,7 +146,7 @@ class MBConvGenerator(GeneratorAbstract):
     @property
     def out_channel(self) -> int:
         """Get out channel size."""
-        return self._get_divisible_channel(self.args[0] * self.width_multiply)
+        return self._get_divisible_channel(self.args[1] * self.width_multiply)
 
     @property
     def base_module(self) -> nn.Module:

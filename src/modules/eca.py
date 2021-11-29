@@ -15,10 +15,7 @@ class eca_layer(nn.Module):
         self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
         self.for_v3 = for_v3
         self.sigmoid = nn.Sigmoid()
-
-        if self.for_v3:
-            self.hardsigmoid = HardSigmoid()
-
+        self.hardsigmoid = HardSigmoid()
 
     def forward(self, x):
         # x: input features with shape [b, c, h, w]

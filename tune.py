@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 from src.dataloader import create_dataloader
 from src.model import Model
-from src.utils.torch_utils import model_info, check_runtime
+from src.utils.torch_utils import model_info, check_runtime, autopad
 from src.trainer import TorchTrainer, count_model_params
 from typing import Any, Dict, List, Tuple
 from optuna.pruners import HyperbandPruner
@@ -14,6 +14,7 @@ from subprocess import _args_from_interpreter_flags
 import argparse
 import yaml
 import os
+import math
 
 DATA_PATH = "/opt/ml/data"  # type your data path here that contains test, train and val directories
 RESULT_MODEL_PATH = "./result_model.pt" # result model will be saved in this path
@@ -32,10 +33,16 @@ DEFAULT = {
     
 BEST_MODEL_SCORE = 0 # f1 score threshold
 
+def calculate_feat_size(image_size:int, kernel_size:int, stride:int, padding:int =None) -> int :
+    if padding is None:
+        padding = int(*autopad(kernel_size, padding))
+    after_size = math.floor((image_size - kernel_size + 2*padding) / stride) + 1
+    return after_size
+
 def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
     """Search hyperparam from user-specified search space."""
     learning_rate = trial.suggest_categorical("lr", [0.1, 0.5, 0.01, 0.05, 0.001, 0.005])
-    epochs = trial.suggest_int("epochs", low=1, high=1, step=50)
+    epochs = trial.suggest_int("epochs", low=50, high=150, step=50)
     img_size = trial.suggest_categorical("img_size", [96, 112, 168, 224])
     n_select = trial.suggest_int("n_select", low=0, high=6, step=2)
     optimizer = trial.suggest_categorical("optimizer", ["sgd", "adam", "adamw"])
@@ -51,11 +58,18 @@ def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
         "scheduler" : scheduler,
     }
 
-def add_module(trial, depth, n_pooling):
+def add_module(trial, depth, n_pooling, image_size):
     m_name = 'm'+str(depth)
-    module_list = ["Conv", "DWConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"]    
-    
+    if depth >= 6 and image_size <= 48 :
+        module_list = ["Conv", "DWConv", "MBConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "Bottleneck", "BottleneckAttn", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"] 
+    else :
+        module_list = ["Conv", "DWConv", "MBConv", "InvertedResidualv2","InvertedResidualv3", "Fire", "Bottleneck", "ECAInvertedResidualv2", "ECAInvertedResidualv3", "Pass"]
+
     m_args = []
+
+    # default 설정
+    m_padding = None
+    m_kernel = 1 
 
     #depth = depth-1
     if n_pooling < MAX_NUM_POOLING:
@@ -69,7 +83,10 @@ def add_module(trial, depth, n_pooling):
         m_repeat = 1
         
     # Module
-    module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=8)
+    if depth >= 6 and image_size <= 48:
+        module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=11)
+    else:
+        module_idx = trial.suggest_int(m_name+"/module_name", low=1, high=10)
     m = module_list[module_idx-1]
     if m == "Conv":
         # Conv args: [out_channel, kernel_size, stride, padding, groups, activation]
@@ -87,6 +104,12 @@ def add_module(trial, depth, n_pooling):
             m_name+"/activation", ["ReLU", "Hardswish"]
         )
         m_args = [m_out_channel, m_kernel, m_stride, None, m_activation]
+    elif m == "MBConv":
+        m_kernel = 5
+        # m_kernel = trial.suggest_int(m_name+"/kernel_size", low=3, high=5, step=2)
+        m_out_channel = trial.suggest_int(m_name+"/out_channel_mb", low=16*depth, high=32*depth, step=16)
+        m_exp_ratio = trial.suggest_int(m_name+"/exp_ratio_mb", low=1, high=4)
+        m_args = [m_exp_ratio, m_out_channel, m_stride, m_kernel]
     elif m == "InvertedResidualv2":
         m_out_channel = trial.suggest_int(m_name+"/out_channel_v2", low=16*depth, high=32*depth, step=16)
         m_exp_ratio = trial.suggest_int(m_name+"/exp_ratio_v2", low=1, high=4)
@@ -102,7 +125,18 @@ def add_module(trial, depth, n_pooling):
         # Fire args: [squeeze_planes, expand1x1_planes, expand3x3_planes]
         m_sqz = trial.suggest_int(m_name+"/sqz", low=16, high=64, step=16)
         m_exp1 = trial.suggest_int(m_name+"/exp1", low=64, high=256, step=64)
+        m_stride = 1
         m_args = [m_sqz, m_exp1, m_exp1]
+    elif m == 'Bottleneck':
+        m_out_channel = trial.suggest_int(m_name+"/out_channel_b", low=16*depth, high=32*depth, step=16)
+        m_stride = 1
+        m_args = [m_out_channel]
+    elif m == "BottleneckAttn":
+        m_out_channel = trial.suggest_int(m_name+"/out_channel_bt", low=1024, high=2048, step=1024)
+        print('#'*100, '\nBottleneckAttn input size : ', image_size)
+        m_feature_size = image_size
+        m_num_heads = trial.suggest_int("m/num_heads", low=4, high=8, step=4)
+        m_args = [m_out_channel, m_feature_size, m_stride, m_num_heads]
     elif m == "ECAInvertedResidualv2":
         m_out_channel = trial.suggest_int(m_name+"/out_channel_v2", low=16, high=32, step=16)
         m_exp_ratio = trial.suggest_int(m_name+"/exp_ratio_v2", low=1, high=4)
@@ -115,27 +149,27 @@ def add_module(trial, depth, n_pooling):
         m_k_eca = trial.suggest_int(m_name+"/v3_k_eca", low=3, high=9, step=2)
         m_hs = trial.suggest_categorical(m_name+"/v3_hs", [0, 1])
         m_args = [m_kernel, m_exp_ratio, m_out_channel, m_k_eca, m_hs, m_stride]
-        
-    ########### 추가 수정할 부분
-    elif m == "MBConv":
-        m_kernel = trial.suggest_int(m_name+"/kernel_size", low=3, high=5, step=2)
-        m_out_channel = trial.suggest_int(m_name+"/c_mb", low=16*depth, high=32*depth, step=16)
-        m_exp_ratio = trial.suggest_int(m_name+"/t_mb", low=1, high=4)
-        m_se = trial.suggest_int(m_name+"/se_mb", low=0, high=1, step=1)
-        m_args = [m_exp_ratio, m_out_channel, m_stride, m_kernel, m_se]
-    elif m == 'Bottleneck':
-        m_out_channel = trial.suggest_int(m_name+"/c_b", low=16*depth, high=32*depth, step=16)
-        m_args = [m_out_channel]
-            
+        image_size = 1
+    
+
+    if m_padding is None:
+        m_padding = int(*autopad(m_kernel, m_padding))
+
+    print('# module block : ', m)
+    print(f"before ####### image_size : {image_size}, m_kernel : {m_kernel}, m_stride : {m_stride}, m_padding : {m_padding}")
+    if m != "Pass":
+        image_size = calculate_feat_size(image_size, m_kernel, m_stride, m_padding)
+    print(f"after ####### image_size : {image_size}")
+
     if not m == "Pass":
         if m_stride==1:
-            return [m_repeat, m, m_args], True
+            return [m_repeat, m, m_args], True, image_size
         else:
-            return [m_repeat, m, m_args], False
+            return [m_repeat, m, m_args], False, image_size
     else:
-        return None, None
+        return None, None, image_size
 
-def add_pooling(trial, depth):
+def add_pooling(trial, depth, image_size):
     m_name = 'mp'+str(depth)
     m = trial.suggest_categorical(
         m_name,
@@ -143,11 +177,12 @@ def add_pooling(trial, depth):
          "AvgPool",
          "Pass"])
     if not m == "Pass":
-        return [1, m, [3,2,1]]
+        feat_size = calculate_feat_size(image_size, 3, 2, 1)
+        return [1, m, [3,2,1]], feat_size
     else:
-        return None
+        return None, image_size
         
-def search_model(trial: optuna.trial.Trial) -> List[Any]:
+def search_model(trial: optuna.trial.Trial, image_size : int) -> List[Any]:
     """Search model structure from user-specified search space."""
     model = []
     n_pooling = 0 # Modify 1 -> 0
@@ -155,6 +190,8 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
     # 32 -> 16 -> 8 -> 4 -> 2 (need 3 times downsampling(=stride2)) <- Competition size
     # 128 -> 64 -> 32 -> 16 -> 8 -> 4 (need 5 times downsampling(=stride2)) <- General size
     # 224 -> 112 -> 56 -> 28 -> 14 -> 7
+
+    feat_size = image_size
     
     # Start Conv (or Depthwise)
     m1 = trial.suggest_categorical("m1", ["Conv", "DWConv"])
@@ -170,7 +207,7 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         m1_stride = 1
     else:
         m1_stride = 2
-        
+
     m1_activation = trial.suggest_categorical(
         "m1/activation", ["ReLU", "Hardswish"]
         )
@@ -181,15 +218,17 @@ def search_model(trial: optuna.trial.Trial) -> List[Any]:
         # DWConv args: [out_channel, kernel_size, stride, padding_size, activation]
         m1_args = [m1_out_channel, 3, m1_stride, None, m1_activation]
     model.append([m1_repeat, m1, m1_args])
+    
+    feat_size = calculate_feat_size(feat_size, 3, m1_stride)
         
     # Module Layers (depths = max_depth)
     for depth in range(2,MAX_DEPTH+3):
-        module_args, use_stride = add_module(trial, depth, n_pooling)
+        module_args, use_stride, feat_size = add_module(trial, depth, n_pooling, feat_size)
         if module_args is not None:
             model.append(module_args)
             if use_stride:
                 if n_pooling<MAX_NUM_POOLING:
-                    pool_args = add_pooling(trial, depth)
+                    pool_args, feat_size = add_pooling(trial, depth, feat_size)
                     if pool_args is not None:
                         model.append(pool_args)
                         n_pooling+=1
@@ -220,27 +259,27 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
         float: score1(e.g. accuracy)
         int: score2(e.g. params)
     """
+    global BEST_MODEL_SCORE
+    
     if args.model_name is None : 
+        hyperparams = DEFAULT
         model_config: Dict[str, Any] = {}
         model_config["input_channel"] = 3
-        # img_size = trial.suggest_categorical("img_size", [32, 64, 128])
-        img_size = 32
-        model_config["INPUT_SIZE"] = [img_size, img_size]
         model_config["depth_multiple"] = trial.suggest_categorical(
             "depth_multiple", [0.25, 0.5, 0.75, 1.0]
         )
         model_config["width_multiple"] = trial.suggest_categorical(
             "width_multiple", [0.25, 0.5, 0.75, 1.0]
         )
-        model_config["backbone"] = search_model(trial)
-        hyperparams = DEFAULT
-        
+        model_config["backbone"] = search_model(trial, hyperparams["IMG_SIZE"])
+
     else :
         model_config_path = f"./configs/model/{args.model_name}.yaml"
         with open(model_config_path) as f:
             model_config = yaml.load(f, Loader=yaml.FullLoader)
         hyperparams = search_hyperparam(trial)
-        model_config["INPUT_SIZE"] = [hyperparams["IMG_SIZE"], hyperparams["IMG_SIZE"]]
+    
+    model_config["INPUT_SIZE"] = [hyperparams["IMG_SIZE"], hyperparams["IMG_SIZE"]]
 
     model = Model(model_config, verbose=True)
     model.to(device)
@@ -265,7 +304,7 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
         [model_config["input_channel"]] + model_config["INPUT_SIZE"],
         device,
     )
-    model_info(model, verbose=True)
+    # model_info(model, verbose=True)
     train_loader, val_loader, _ = create_dataloader(data_config)
 
     criterion = nn.CrossEntropyLoss()
@@ -292,8 +331,9 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
     loss, f1_score, acc_percent = trainer.test(model, test_dataloader=val_loader)
     params_nums = count_model_params(model)
 
-    model_info(model, verbose=True)
+    # model_info(model, verbose=True)
     if f1_score > BEST_MODEL_SCORE:
+        BEST_MODEL_SCORE = f1_score
         file_name = f"{f1_score:.2%}_{params_nums}_{mean_time:.3f}.yaml"
         if args.model_name: # Search hyperparams
             save_path = os.path.join('./configs/data', file_name)
@@ -368,7 +408,7 @@ def tune(gpu_id, args, storage: str = None):
         storage=rdb_storage,
         load_if_exists=True,
     )
-    study.optimize(lambda trial: objective(trial, args, device), n_trials=500) # original: 500
+    study.optimize(lambda trial: objective(trial, args, device), n_trials=100) # original: 500
 
     pruned_trials = [
         t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
@@ -398,9 +438,9 @@ def tune(gpu_id, args, storage: str = None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Optuna tuner.")
     parser.add_argument("--gpu", default=0, type=int, help="GPU id to use")
-    # parser.add_argument("--storage", default="sqlite:///automl_fire+.db", type=str, help="Optuna database storage path.")
-    parser.add_argument("--storage", default=f"mysql://metamong:{input('DB password: ')}@34.82.27.63/test", type=str, help="Optuna database storage path.")
+    parser.add_argument("--storage", default="sqlite:///automl_fire+.db", type=str, help="Optuna database storage path.")
     parser.add_argument("--model_name", default=None, type=str, help="Model config file name (if not None, search hyperparams)")
+    # parser.add_argument("--storage", default=f"mysql://metamong:{input('DB password: ')}@34.82.27.63/test", type=str, help="Optuna database storage path.")
     
     args = parser.parse_args()
 
