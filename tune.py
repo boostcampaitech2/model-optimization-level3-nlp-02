@@ -24,7 +24,7 @@ MAX_DEPTH = 6
 CLASSES = 6
 DEFAULT = {
         "EPOCHS": 10,
-        "IMG_SIZE": 112,
+        "IMG_SIZE": 96,
         "n_select": 2,
         "BATCH_SIZE": 16,
         "optimizer" : None,

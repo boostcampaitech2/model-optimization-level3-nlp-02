@@ -17,7 +17,6 @@ class eca_layer(nn.Module):
         self.sigmoid = nn.Sigmoid()
         self.hardsigmoid = HardSigmoid()
 
-
     def forward(self, x):
         # x: input features with shape [b, c, h, w]
         b, c, h, w = x.size()
