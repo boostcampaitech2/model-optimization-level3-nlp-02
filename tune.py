@@ -9,7 +9,6 @@ from src.model import Model
 from src.utils.torch_utils import model_info, check_runtime, autopad
 from src.trainer import TorchTrainer, count_model_params
 from typing import Any, Dict, List, Tuple
-from optuna.pruners import HyperbandPruner
 from subprocess import _args_from_interpreter_flags
 import argparse
 import yaml
@@ -47,9 +46,9 @@ def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
     n_select = trial.suggest_int("n_select", low=0, high=6, step=2)
     optimizer = trial.suggest_categorical("optimizer", ["sgd", "adam", "adamw"])
     batch_size = trial.suggest_int("batch_size", low=16, high=32, step=16)
-    scheduler = trial.suggest_categorical("scheduler", ["reduce", "cosine", "None"])
+    scheduler = trial.suggest_categorical("scheduler", ["reduce", "cosine", "onecycle", "None"])
     return {
-        "LR" : learning_rate,
+        "INIT_LR" : learning_rate,
         "EPOCHS": epochs,
         "IMG_SIZE": img_size,
         "n_select": n_select,
@@ -288,6 +287,7 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
     data_config: Dict[str, Any] = {}
     data_config["DATA_PATH"] = DATA_PATH
     data_config["DATASET"] = "TACO"
+    data_config["FP16"] = True
     data_config["AUG_TRAIN"] = "randaugment_train"
     data_config["AUG_TEST"] = "simple_augment_test"
     data_config["AUG_TRAIN_PARAMS"] = {
@@ -325,6 +325,7 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
         device=device,
         verbose=1,
         model_path=RESULT_MODEL_PATH,
+        trial=trial
     )
     trainer.train(train_loader, hyperparams["EPOCHS"], val_dataloader=val_loader)
     loss, f1_score, acc_percent = trainer.test(model, test_dataloader=val_loader)
@@ -349,8 +350,11 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
             with open(save_path, 'w') as f:
                 yaml.dump(model_config, f)
             print("Complete saving model yaml file to ", save_path)
-                
-    return f1_score, params_nums, mean_time
+    
+    if args.model_name: # single-objective
+        return f1_score
+    else: # multi-objective
+        return f1_score, params_nums, mean_time
 
 
 def get_best_trial_with_condition(optuna_study: optuna.study.Study) -> Dict[str, Any]:
@@ -400,9 +404,19 @@ def tune(gpu_id, args, storage: str = None):
         print(rdb_storage)
     else:
         rdb_storage = None
+    
+    if args.model_name:
+        study_name = "automl_hyparams"
+        directions = ["maximize"]
+        pruner = optuna.pruners.HyperbandPruner()
+    else:
+        study_name = "automl1130"
+        directions = ["maximize", "minimize", "minimize"]
+        pruner = None # multi-objective cannot use pruner
     study = optuna.create_study(
-        directions=["maximize", "minimize", "minimize"],
-        study_name="automl101",
+        directions=directions,
+        pruner = pruner,
+        study_name=study_name,
         sampler=sampler,
         storage=rdb_storage,
         load_if_exists=True,
@@ -437,9 +451,9 @@ def tune(gpu_id, args, storage: str = None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Optuna tuner.")
     parser.add_argument("--gpu", default=0, type=int, help="GPU id to use")
-    parser.add_argument("--storage", default="sqlite:///automl_fire+.db", type=str, help="Optuna database storage path.")
+    # parser.add_argument("--storage", default="sqlite:///automl.db", type=str, help="Optuna database storage path.") # make local db
     parser.add_argument("--model_name", default=None, type=str, help="Model config file name (if not None, search hyperparams)")
-    # parser.add_argument("--storage", default=f"mysql://metamong:{input('DB password: ')}@34.82.27.63/test", type=str, help="Optuna database storage path.")
+    parser.add_argument("--storage", default=f"mysql://metamong:{input('DB password: ')}@34.82.27.63/test", type=str, help="Optuna database storage path.")
     
     args = parser.parse_args()
 
