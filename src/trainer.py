@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision
+import optuna
 from sklearn.metrics import f1_score
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
@@ -87,6 +88,7 @@ class TorchTrainer:
         scaler=None,
         device: torch.device = "cpu",
         verbose: int = 1,
+        trial: Optional[optuna.trial.Trial] = None,
     ) -> None:
         """Initialize TorchTrainer class.
 
@@ -97,12 +99,18 @@ class TorchTrainer:
             device: torch device
             verbose: verbosity level.
         """
+        # taco.yaml을 사용한 경우 (hyperparameter search를 하지 않은 경우)
+        if "optimizer" not in hyperparams.keys():
+            hyperparams["optimizer"] = "sgd"
+            hyperparams["scheduler"] = "onecycle"
+
+        # define optimizer & scheduler
         if hyperparams["optimizer"] == "sgd":
-            optimizer = optim.SGD(model.parameters(), lr=hyperparams["LR"], momentum=0.9, weight_decay=5e-4)
+            optimizer = optim.SGD(model.parameters(), lr=hyperparams["INIT_LR"], momentum=0.9, weight_decay=5e-4)
         elif hyperparams["optimizer"] == "adam":
-            optimizer = optim.Adam(model.parameters(), lr=hyperparams["LR"], weight_decay=5e-4)
+            optimizer = optim.Adam(model.parameters(), lr=hyperparams["INIT_LR"], weight_decay=5e-4)
         elif hyperparams["optimizer"] == "adamw":
-            optimizer = optim.AdamW(model.parameters(), lr=hyperparams["LR"], weight_decay=5e-4)
+            optimizer = optim.AdamW(model.parameters(), lr=hyperparams["INIT_LR"], weight_decay=5e-4)
         else : 
             optimizer = hyperparams["optimizer"]
 
@@ -110,6 +118,10 @@ class TorchTrainer:
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=hyperparams['EPOCHS'])
         elif hyperparams["scheduler"] == "reduce":
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, threshold_mode='abs',min_lr=1e-6)
+        elif hyperparams["scheduler"] == "onecycle":
+            scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=hyperparams["INIT_LR"],
+                                                            steps_per_epoch=20851//hyperparams["BATCH_SIZE"],
+                                                            epochs=hyperparams["EPOCHS"], pct_start=0.05)
         elif hyperparams["scheduler"] == "None":
             scheduler = None
         else : 
@@ -125,6 +137,7 @@ class TorchTrainer:
         self.scaler = scaler
         self.verbose = verbose
         self.device = device
+        self.trial = trial
 
     def train(
         self,
@@ -190,10 +203,17 @@ class TorchTrainer:
                     f"F1(macro): {f1_score(y_true=gt, y_pred=preds, labels=label_list, average='macro', zero_division=0):.2f}"
                 )
             pbar.close()
-            
+
             _, test_f1, test_acc = self.test(
                 model=self.model, test_dataloader=val_dataloader
             )
+
+            if self.trial is not None:
+                self.trial.report(test_f1, epoch)
+                if self.trial.should_prune():
+                    print("Unpromising Trial.")
+                    raise optuna.TrialPruned()
+                print("Promising Trial!")
 
             if self.scheduler is not None:
                 if self.scheduler == "cosine":
