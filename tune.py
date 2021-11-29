@@ -149,7 +149,6 @@ def add_module(trial, depth, n_pooling, image_size):
         m_k_eca = trial.suggest_int(m_name+"/v3_k_eca", low=3, high=9, step=2)
         m_hs = trial.suggest_categorical(m_name+"/v3_hs", [0, 1])
         m_args = [m_kernel, m_exp_ratio, m_out_channel, m_k_eca, m_hs, m_stride]
-        image_size = 1
     
 
     if m_padding is None:
