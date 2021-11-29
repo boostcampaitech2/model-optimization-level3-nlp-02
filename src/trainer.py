@@ -213,7 +213,7 @@ class TorchTrainer:
                 if self.trial.should_prune():
                     print("Unpromising Trial.")
                     raise optuna.TrialPruned()
-                print("Promising Trial!")
+                # print("Promising Trial!")
 
             if self.scheduler is not None:
                 if self.scheduler == "cosine":
