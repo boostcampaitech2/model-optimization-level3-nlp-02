@@ -325,7 +325,7 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
         device=device,
         verbose=1,
         model_path=RESULT_MODEL_PATH,
-        trial=trial
+        trial=trial if args.model_name else None
     )
     trainer.train(train_loader, hyperparams["EPOCHS"], val_dataloader=val_loader)
     loss, f1_score, acc_percent = trainer.test(model, test_dataloader=val_loader)
