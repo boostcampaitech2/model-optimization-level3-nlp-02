@@ -10,5 +10,6 @@ exp*
 __pycache*
 
 experiments/
+configs/model
 
 input/cifar10
