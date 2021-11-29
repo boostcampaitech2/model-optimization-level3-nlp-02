@@ -33,7 +33,7 @@ DEFAULT = {
     
 BEST_MODEL_SCORE = 0 # f1 score threshold
 
-def calculate_feat_size(image_size:int, kernel_size:int, stride:int, padding:int =None ) -> int :
+def calculate_feat_size(image_size:int, kernel_size:int, stride:int, padding:int =None) -> int :
     if padding is None:
         padding = int(*autopad(kernel_size, padding))
     after_size = math.floor((image_size - kernel_size + 2*padding) / stride) + 1
@@ -67,7 +67,9 @@ def add_module(trial, depth, n_pooling, image_size):
 
     m_args = []
 
-    m_kernel = 1 # default 설정
+    # default 설정
+    m_padding = None
+    m_kernel = 1 
 
     #depth = depth-1
     if n_pooling < MAX_NUM_POOLING:
@@ -103,7 +105,8 @@ def add_module(trial, depth, n_pooling, image_size):
         )
         m_args = [m_out_channel, m_kernel, m_stride, None, m_activation]
     elif m == "MBConv":
-        m_kernel = trial.suggest_int(m_name+"/kernel_size", low=3, high=5, step=2)
+        m_kernel = 5
+        # m_kernel = trial.suggest_int(m_name+"/kernel_size", low=3, high=5, step=2)
         m_out_channel = trial.suggest_int(m_name+"/out_channel_mb", low=16*depth, high=32*depth, step=16)
         m_exp_ratio = trial.suggest_int(m_name+"/exp_ratio_mb", low=1, high=4)
         m_args = [m_exp_ratio, m_out_channel, m_stride, m_kernel]
@@ -149,11 +152,14 @@ def add_module(trial, depth, n_pooling, image_size):
         image_size = 1
     
 
-    # print('&&&&&&&&&&&&', m)
-    # print(f"before ####### image_size : {image_size}, m_kernel : {m_kernel}, m_stride : {m_stride}")
+    if m_padding is None:
+        m_padding = int(*autopad(m_kernel, m_padding))
+
+    print('# module block : ', m)
+    print(f"before ####### image_size : {image_size}, m_kernel : {m_kernel}, m_stride : {m_stride}, m_padding : {m_padding}")
     if m != "Pass":
-        image_size = calculate_feat_size(image_size, m_kernel, m_stride)
-    # print(f"after ####### image_size : {image_size}")
+        image_size = calculate_feat_size(image_size, m_kernel, m_stride, m_padding)
+    print(f"after ####### image_size : {image_size}")
 
     if not m == "Pass":
         if m_stride==1:
