@@ -368,7 +368,7 @@ def tune(gpu_id, args, storage: str = None):
         storage=rdb_storage,
         load_if_exists=True,
     )
-    study.optimize(lambda trial: objective(trial, args, device), n_trials=20) # original: 500
+    study.optimize(lambda trial: objective(trial, args, device), n_trials=500) # original: 500
 
     pruned_trials = [
         t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
