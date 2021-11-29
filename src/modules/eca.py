@@ -28,8 +28,8 @@ class eca_layer(nn.Module):
 
         if self.for_v3:
             y = self.hardsigmoid(y)
-
-            return y
+            
+            return x * y.expand_as(x)
         else:
             # Multi-scale information fusion
             y = self.sigmoid(y)
