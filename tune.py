@@ -53,7 +53,7 @@ def calculate_feat_size(image_size:int, kernel_size:int, stride:int, padding:int
 def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
     """Search hyperparam from user-specified search space."""
     learning_rate = trial.suggest_uniform("lr", 0.000001, 0.005)
-    epochs = trial.suggest_int("epochs", low=1, high=1, step=10)
+    epochs = trial.suggest_int("epochs", low=30, high=120, step=10)
     img_size = trial.suggest_categorical("img_size", [96, 112, 168, 224])
     n_select = trial.suggest_int("n_select", low=0, high=6, step=2)
     optimizer = trial.suggest_categorical("optimizer", ["sgd", "adam", "adamw"])
@@ -435,7 +435,7 @@ def tune(gpu_id, args, storage: str = None):
         storage=rdb_storage,
         load_if_exists=True,
     )
-    study.optimize(lambda trial: objective(trial, args, device), n_trials=2) # original: 500
+    study.optimize(lambda trial: objective(trial, args, device), n_trials=100) # original: 500
 
     pruned_trials = [
         t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
@@ -468,9 +468,9 @@ def tune(gpu_id, args, storage: str = None):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Optuna tuner.")
     parser.add_argument("--gpu", default=0, type=int, help="GPU id to use")
-    parser.add_argument("--storage", default="sqlite:///automl.db", type=str, help="Optuna database storage path.") # make local db
+    # parser.add_argument("--storage", default="sqlite:///automl.db", type=str, help="Optuna database storage path.") # make local db
     parser.add_argument("--model_name", default=None, type=str, help="Model config file name (if not None, search hyperparams)")
-    # parser.add_argument("--storage", default=f"mysql://metamong:{input('DB password: ')}@34.82.27.63/test", type=str, help="Optuna database storage path.")
+    parser.add_argument("--storage", default=f"mysql://metamong:{input('DB password: ')}@34.82.27.63/test", type=str, help="Optuna database storage path.")
     
     args = parser.parse_args()
     seed_everything(2)
