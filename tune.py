@@ -420,7 +420,7 @@ def tune(gpu_id, args, storage: str = None):
         rdb_storage = None
     
     if args.model_name:
-        study_name = "automl_hyparams-1"
+        study_name = "Final-1" # BEST_2는 "Final-2"로 변경 부탁드립니다.
         directions = ["maximize"]
         pruner = optuna.pruners.HyperbandPruner()
     else:
