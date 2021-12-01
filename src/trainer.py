@@ -27,7 +27,7 @@ from src.sam import SAM
 
 def knowledge_distillation_loss(logits, labels, teacher_logits):
         alpha = 0.3
-        T = 7
+        T = 15
         
         student_loss = F.cross_entropy(input=logits, target=labels)
         distillation_loss = nn.KLDivLoss(reduction='batchmean')(F.log_softmax(logits/T, dim=1), F.softmax(teacher_logits/T, dim=1)) * (T * T)

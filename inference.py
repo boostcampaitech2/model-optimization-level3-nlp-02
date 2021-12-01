@@ -180,7 +180,7 @@ if __name__ == "__main__":
         # )
         # model = model_instance.model
         model = timm.create_model('mixnet_s', num_classes=6)
-        model.load_state_dict(torch.load("/opt/ml/code/exp/mix/best.pt"))
+        # model.load_state_dict(torch.load("/opt/ml/code/exp/mix/best.pt"))
 
     # inference
     inference(model, dataloader, args.dst, t0)

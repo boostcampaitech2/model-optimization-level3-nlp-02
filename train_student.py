@@ -49,22 +49,25 @@ def train(
     with open(os.path.join(log_dir, "model.yml"), "w") as f:
         yaml.dump(model_config, f, default_flow_style=False)
 
-    model_instance = Model(model_config, verbose=True)
+    # model_instance = Model(model_config, verbose=True)
 
     model_path = os.path.join(log_dir, "best.pt")
     print(f"Model save path: {model_path}")
-    if os.path.isfile(model_path):
-        model_instance.model.load_state_dict(
-            torch.load(model_path, map_location=device)
-        )
-    model_instance.model.to(device)
+    # if os.path.isfile(model_path):
+    #     model_instance.model.load_state_dict(
+    #         torch.load(model_path, map_location=device)
+    #     )
+    # model_instance.model.to(device)
+    student_model = timm.create_model('tf_mobilenetv3_small_minimal_100', num_classes=6, pretrained=True)
 
     # teacher_model = timm.create_model('vit_large_patch16_224', num_classes=6, pretrained=True)
     # teacher_model.load_state_dict(torch.load("/opt/ml/code/exp/ViT/best.pt"))
-    teacher_model = timm.create_model('tf_efficientnet_b0_ns', num_classes=6, pretrained=True)
-    teacher_model.load_state_dict(torch.load("/opt/ml/code/exp/NS/best.pt"))
+    teacher_model = timm.create_model('tf_efficientnet_b7_ns', num_classes=6, pretrained=True)
+    teacher_model.load_state_dict(torch.load("/opt/ml/code/exp/Teacher/best.pt"))
     
+    student_model.to(device)
     teacher_model.to(device)
+    
 
     # Create dataloader
     train_dl, val_dl, test_dl = create_dataloader(data_config)
@@ -83,7 +86,7 @@ def train(
 
     # Create trainer
     trainer = TorchTrainer(
-        model=model_instance.model,
+        model=student_model,
         criterion=criterion,
         hyperparams=data_config,
         scaler=scaler,
@@ -100,9 +103,9 @@ def train(
     )
 
     # evaluate model with test set
-    model_instance.model.load_state_dict(torch.load(model_path))
+    student_model.load_state_dict(torch.load(model_path))
     test_loss, test_f1, test_acc = trainer.test(
-        model=model_instance.model, test_dataloader=val_dl if val_dl else test_dl
+        model=student_model, test_dataloader=val_dl if val_dl else test_dl
     )
     return test_loss, test_f1, test_acc
 
