@@ -15,6 +15,7 @@ import torch.optim as optim
 import torchvision
 import optuna
 from sklearn.metrics import f1_score
+import torch.nn.functional as F
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset
 from torch.utils.data.sampler import SequentialSampler, SubsetRandomSampler
@@ -22,6 +23,17 @@ from tqdm import tqdm
 
 from src.utils.torch_utils import save_model
 
+from src.sam import SAM
+
+def knowledge_distillation_loss(logits, labels, teacher_logits):
+        alpha = 0.3
+        T = 7
+        
+        student_loss = F.cross_entropy(input=logits, target=labels)
+        distillation_loss = nn.KLDivLoss(reduction='batchmean')(F.log_softmax(logits/T, dim=1), F.softmax(teacher_logits/T, dim=1)) * (T * T)
+        total_loss =  (1. - alpha)*student_loss + alpha*distillation_loss
+ 
+        return total_loss
 
 def _get_n_data_from_dataloader(dataloader: DataLoader) -> int:
     """Get a number of data in dataloader.
@@ -89,6 +101,7 @@ class TorchTrainer:
         device: torch.device = "cpu",
         verbose: int = 1,
         trial: Optional[optuna.trial.Trial] = None,
+        flag = False
     ) -> None:
         """Initialize TorchTrainer class.
 
@@ -107,6 +120,9 @@ class TorchTrainer:
         # define optimizer & scheduler
         if hyperparams["optimizer"] == "sgd":
             optimizer = optim.SGD(model.parameters(), lr=hyperparams["INIT_LR"], momentum=0.9, weight_decay=5e-4)
+            self.sam = SAM(model.parameters(), optim.SGD, lr=hyperparams["INIT_LR"], momentum=0.9)
+            self.sam_flag = flag
+            print(f'use sam !!! : {self.sam_flag}')
         elif hyperparams["optimizer"] == "adam":
             optimizer = optim.Adam(model.parameters(), lr=hyperparams["INIT_LR"], weight_decay=5e-4)
         elif hyperparams["optimizer"] == "adamw":
@@ -146,7 +162,6 @@ class TorchTrainer:
         val_dataloader: Optional[DataLoader] = None,
     ) -> Tuple[float, float]:
         """Train model.
-
         Args:
             train_dataloader: data loader module which is a iterator that returns (data, labels)
             n_epoch: number of total epochs for training
@@ -184,11 +199,118 @@ class TorchTrainer:
                     self.scaler.update()
                 else:
                     loss.backward()
-                    self.optimizer.step()
+                    if self.sam_flag :
+                        self.sam.first_step(zero_grad=True)
+                        self.criterion(self.model(data), labels).backward()
+                        self.sam.second_step(zero_grad=True)
+                    else:
+                        self.optimizer.step()
 
                 
 
                 _, pred = torch.max(outputs, 1)
+                total += labels.size(0)
+                correct += (pred == labels).sum().item()
+                preds += pred.to("cpu").tolist()
+                gt += labels.to("cpu").tolist()
+
+                running_loss += loss.item()
+                pbar.update()
+                pbar.set_description(
+                    f"Train: [{epoch + 1:03d}] "
+                    f"Loss: {(running_loss / (batch + 1)):.3f}, "
+                    f"Acc: {(correct / total) * 100:.2f}% "
+                    f"F1(macro): {f1_score(y_true=gt, y_pred=preds, labels=label_list, average='macro', zero_division=0):.2f}"
+                )
+            pbar.close()
+
+            _, test_f1, test_acc = self.test(
+                model=self.model, test_dataloader=val_dataloader
+            )
+
+            if self.trial is not None:
+                self.trial.report(test_f1, epoch)
+                if self.trial.should_prune():
+                    print("Unpromising Trial.")
+                    raise optuna.TrialPruned()
+                # print("Promising Trial!")
+
+            if self.scheduler is not None:
+                if self.scheduler == "cosine":
+                    self.scheduler.step()
+                elif self.scheduler == "reduce":
+                    self.scheduler.step(test_f1)
+            
+            if best_test_f1 > test_f1:
+                continue
+            best_test_acc = test_acc
+            best_test_f1 = test_f1
+            print(f"Model saved. Current best test f1: {best_test_f1:.3f}")
+            save_model(
+                model=self.model,
+                path=self.model_path,
+                data=data,
+                device=self.device,
+            )
+
+        return best_test_acc, best_test_f1
+
+    def KD_train(
+        self,
+        train_dataloader: DataLoader,
+        n_epoch: int,
+        val_dataloader: Optional[DataLoader] = None,
+        teacher : nn.Module = None
+    ) -> Tuple[float, float]:
+        """Train model.
+
+        Args:
+            train_dataloader: data loader module which is a iterator that returns (data, labels)
+            n_epoch: number of total epochs for training
+            val_dataloader: dataloader for validation
+
+        Returns:
+            loss and accuracy
+        """
+        best_test_acc = -1.0
+        best_test_f1 = -1.0
+        num_classes = _get_len_label_from_dataset(train_dataloader.dataset)
+        label_list = [i for i in range(num_classes)]
+
+        for epoch in range(n_epoch):
+            running_loss, correct, total = 0.0, 0, 0
+            preds, gt = [], []
+            pbar = tqdm(enumerate(train_dataloader), total=len(train_dataloader))
+            
+            self.model.train()
+            teacher.eval()
+            
+            for batch, (data, labels) in pbar:
+                data, labels = data.to(self.device), labels.to(self.device)
+
+                if self.scaler:
+                    with torch.cuda.amp.autocast():
+                        teacher_outputs = teacher(data)
+                        student_outputs = self.model(data)
+                else:
+                    teacher_outputs = teacher(data)
+                    student_outputs = self.model(data)
+                student_outputs = torch.squeeze(student_outputs)
+                teacher_outputs = torch.squeeze(teacher_outputs)
+
+                loss = knowledge_distillation_loss(student_outputs, labels, teacher_outputs)
+
+                self.optimizer.zero_grad()
+
+                if self.scaler:
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                else:
+                    loss.backward()
+                    self.optimizer.step()
+
+                _, pred = torch.max(student_outputs, 1)
                 total += labels.size(0)
                 correct += (pred == labels).sum().item()
                 preds += pred.to("cpu").tolist()

@@ -14,6 +14,7 @@ import argparse
 import yaml
 import os
 import math
+import platform
 
 DATA_PATH = "/opt/ml/data"  # type your data path here that contains test, train and val directories
 RESULT_MODEL_PATH = "./result_model.pt" # result model will be saved in this path
@@ -41,7 +42,7 @@ def calculate_feat_size(image_size:int, kernel_size:int, stride:int, padding:int
 def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
     """Search hyperparam from user-specified search space."""
     learning_rate = trial.suggest_categorical("lr", [0.1, 0.5, 0.01, 0.05, 0.001, 0.005])
-    epochs = trial.suggest_int("epochs", low=50, high=150, step=50)
+    epochs = trial.suggest_int("epochs", low=30, high=120, step=10)
     img_size = trial.suggest_categorical("img_size", [96, 112, 168, 224])
     n_select = trial.suggest_int("n_select", low=0, high=6, step=2)
     optimizer = trial.suggest_categorical("optimizer", ["sgd", "adam", "adamw"])
@@ -258,7 +259,8 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
         int: score2(e.g. params)
     """
     global BEST_MODEL_SCORE
-    
+    trial.set_user_attr("worker", 'LGS')
+
     if args.model_name is None : 
         hyperparams = DEFAULT
         model_config: Dict[str, Any] = {}
@@ -406,7 +408,7 @@ def tune(gpu_id, args, storage: str = None):
         rdb_storage = None
     
     if args.model_name:
-        study_name = "automl_hyparams"
+        study_name = "automl_hyparams-3-final"
         directions = ["maximize"]
         pruner = optuna.pruners.HyperbandPruner()
     else:

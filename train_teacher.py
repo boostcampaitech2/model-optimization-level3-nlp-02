@@ -8,6 +8,8 @@ import os
 from datetime import datetime
 from typing import Any, Dict, Tuple, Union
 
+import timm
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -46,14 +48,15 @@ def train(
     with open(os.path.join(log_dir, "model.yml"), "w") as f:
         yaml.dump(model_config, f, default_flow_style=False)
 
-    model_instance = Model(model_config, verbose=True)
+    model = timm.create_model('tf_efficientnet_b0_ns', num_classes=6, pretrained=True)
+
     model_path = os.path.join(log_dir, "best.pt")
     print(f"Model save path: {model_path}")
     if os.path.isfile(model_path):
-        model_instance.model.load_state_dict(
+        model.load_state_dict(
             torch.load(model_path, map_location=device)
         )
-    model_instance.model.to(device)
+    model.to(device)
 
     # Create dataloader
     train_dl, val_dl, test_dl = create_dataloader(data_config)
@@ -72,7 +75,7 @@ def train(
 
     # Create trainer
     trainer = TorchTrainer(
-        model=model_instance.model,
+        model=model,
         criterion=criterion,
         hyperparams=data_config,
         scaler=scaler,
@@ -87,9 +90,9 @@ def train(
     )
 
     # evaluate model with test set
-    model_instance.model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path))
     test_loss, test_f1, test_acc = trainer.test(
-        model=model_instance.model, test_dataloader=val_dl if val_dl else test_dl
+        model=model, test_dataloader=val_dl if val_dl else test_dl
     )
     return test_loss, test_f1, test_acc
 

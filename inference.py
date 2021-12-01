@@ -9,6 +9,8 @@ import os
 import time
 from datetime import datetime
 
+import timm
+
 import torch
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
@@ -54,7 +56,7 @@ def get_dataloader(img_root: str, data_config: str) -> DataLoader:
     data_config = read_yaml(data_config)
 
     transform_test_args = (
-        data_confg["AUG_TEST_PARAMS"] if data_config.get("AUG_TEST_PARAMS") else None
+        data_config["AUG_TEST_PARAMS"] if data_config.get("AUG_TEST_PARAMS") else None
     )
     # Transformation for test
     transform_test = getattr(
@@ -172,11 +174,13 @@ if __name__ == "__main__":
     if args.weight.endswith("ts"):
         model = torch.jit.load(args.weight)
     else:
-        model_instance = Model(args.model_config, verbose=True)
-        model_instance.model.load_state_dict(
-            torch.load(args.weight, map_location=torch.device("cpu"))
-        )
-        model = model_instance.model
+        # model_instance = Model(args.model_config, verbose=True)
+        # model_instance.model.load_state_dict(
+        #     torch.load(args.weight, map_location=torch.device("cpu"))
+        # )
+        # model = model_instance.model
+        model = timm.create_model('tf_efficientnet_b0_ns', num_classes=6, pretrained=True)
+        model.load_state_dict(torch.load("/opt/ml/code/exp/NS/best.pt"))
 
     # inference
     inference(model, dataloader, args.dst, t0)

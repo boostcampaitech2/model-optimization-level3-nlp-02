@@ -1,0 +1,16 @@
+AUG_TEST: simple_augment_test
+AUG_TEST_PARAMS: null
+AUG_TRAIN: randaugment_train
+AUG_TRAIN_PARAMS:
+  n_select: 2
+BATCH_SIZE: 16
+DATASET: TACO
+DATA_PATH: /opt/ml/data
+EPOCHS: 120
+FP16: true
+IMG_SIZE: 96
+INIT_LR: 0.001
+VAL_RATIO: 0.8
+n_select: 2
+optimizer: sgd
+scheduler: cosine

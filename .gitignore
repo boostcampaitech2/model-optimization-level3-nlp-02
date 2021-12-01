@@ -13,3 +13,5 @@ experiments/
 configs/model
 
 input/cifar10
+
+visual.ipynb
