@@ -1,7 +1,6 @@
 import optuna
 import logging
 import sys
-import platform
 import random
 import torch
 import torch.nn as nn
@@ -34,6 +33,7 @@ DEFAULT = {
     }
     
 BEST_MODEL_SCORE = 0 # f1 score threshold
+NAME = '여기에 이름을 넣어주세요'
 
 def seed_everything(seed):
     torch.manual_seed(seed)
@@ -270,7 +270,7 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
         int: score2(e.g. params)
     """
     global BEST_MODEL_SCORE
-    trial.set_user_attr("yb", platform.node())
+    trial.set_user_attr("worker", NAME)
 
     if args.model_name is None : 
         hyperparams = DEFAULT
