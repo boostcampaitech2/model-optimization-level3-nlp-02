@@ -39,7 +39,7 @@ def train(
     log_dir: str,
     fp16: bool,
     device: torch.device,
-    flag : bool 
+    flag : bool = False
 ) -> Tuple[float, float, float]:
     """Train."""
     seed_everything(2)

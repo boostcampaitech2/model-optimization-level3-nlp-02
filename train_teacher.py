@@ -39,6 +39,7 @@ def train(
     log_dir: str,
     fp16: bool,
     device: torch.device,
+    flag : bool = False
 ) -> Tuple[float, float, float]:
     """Train."""
     seed_everything(2)
@@ -48,7 +49,7 @@ def train(
     with open(os.path.join(log_dir, "model.yml"), "w") as f:
         yaml.dump(model_config, f, default_flow_style=False)
 
-    model = timm.create_model('tf_efficientnet_b0_ns', num_classes=6, pretrained=True)
+    model = timm.create_model('tf_efficientnet_b7_ns', num_classes=6, pretrained=True)
 
     model_path = os.path.join(log_dir, "best.pt")
     print(f"Model save path: {model_path}")
@@ -82,6 +83,7 @@ def train(
         device=device,
         model_path=model_path,
         verbose=1,
+        flag = flag
     )
     best_acc, best_f1 = trainer.train(
         train_dataloader=train_dl,
@@ -107,6 +109,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--data", default="taco", type=str, help="data config file name"
+    )
+    parser.add_argument(
+        "--sam_flag", action='store_true',
     )
     args = parser.parse_args()
 
@@ -134,5 +139,6 @@ if __name__ == "__main__":
         log_dir=log_dir,
         fp16=data_config["FP16"],
         device=device,
+        flag=args.sam_flag
     )
 

@@ -179,8 +179,8 @@ if __name__ == "__main__":
         #     torch.load(args.weight, map_location=torch.device("cpu"))
         # )
         # model = model_instance.model
-        model = timm.create_model('tf_efficientnet_b0_ns', num_classes=6, pretrained=True)
-        model.load_state_dict(torch.load("/opt/ml/code/exp/NS/best.pt"))
+        model = timm.create_model('mixnet_s', num_classes=6)
+        model.load_state_dict(torch.load("/opt/ml/code/exp/mix/best.pt"))
 
     # inference
     inference(model, dataloader, args.dst, t0)
