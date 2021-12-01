@@ -1,9 +1,11 @@
 import optuna
 import logging
 import sys
+import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
 from src.dataloader import create_dataloader
 from src.model import Model
 from src.utils.torch_utils import model_info, check_runtime, autopad
@@ -31,6 +33,16 @@ DEFAULT = {
     }
     
 BEST_MODEL_SCORE = 0 # f1 score threshold
+NAME = '여기에 이름을 넣어주세요'
+
+def seed_everything(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # if use multi-GPU
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed)
+    random.seed(seed)
 
 def calculate_feat_size(image_size:int, kernel_size:int, stride:int, padding:int =None) -> int :
     if padding is None:
@@ -40,8 +52,8 @@ def calculate_feat_size(image_size:int, kernel_size:int, stride:int, padding:int
 
 def search_hyperparam(trial: optuna.trial.Trial) -> Dict[str, Any]:
     """Search hyperparam from user-specified search space."""
-    learning_rate = trial.suggest_categorical("lr", [0.1, 0.5, 0.01, 0.05, 0.001, 0.005])
-    epochs = trial.suggest_int("epochs", low=50, high=150, step=50)
+    learning_rate = trial.suggest_uniform("lr", 0.000001, 0.005)
+    epochs = trial.suggest_int("epochs", low=30, high=120, step=10)
     img_size = trial.suggest_categorical("img_size", [96, 112, 168, 224])
     n_select = trial.suggest_int("n_select", low=0, high=6, step=2)
     optimizer = trial.suggest_categorical("optimizer", ["sgd", "adam", "adamw"])
@@ -234,11 +246,11 @@ def search_model(trial: optuna.trial.Trial, image_size : int) -> List[Any]:
                 n_pooling+=1
     
     last_dim = trial.suggest_int("last_dim", low=512, high=1024, step=256)
-    model.append([1, "Conv", [last_dim, 1, 1]])
         
     # GAP -> Classifier
     last_layer = trial.suggest_categorical("last", ["Linear", "Conv"])
     if last_layer == 'Linear':
+        model.append([1, "Conv", [last_dim, 1, 1]])
         model.append([1, "GlobalAvgPool", []])
         model.append([1, "Flatten", []])
         model.append([1, "Linear", [CLASSES]])
@@ -258,7 +270,8 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
         int: score2(e.g. params)
     """
     global BEST_MODEL_SCORE
-    
+    trial.set_user_attr("worker", NAME)
+
     if args.model_name is None : 
         hyperparams = DEFAULT
         model_config: Dict[str, Any] = {}
@@ -345,6 +358,7 @@ def objective(trial: optuna.trial.Trial, args, device) -> Tuple[float, int, floa
             with open(save_path, 'w') as f:
                 yaml.dump(hyperparams, f)
             print("Complete saving hyperparameter yaml file to ", save_path)
+            torch.save(model, os.path.join('./configs/data', f"{f1_score:.2%}_{params_nums}_{mean_time:.3f}.pt"))
         else: # Search model
             save_path = os.path.join('./configs/model', file_name)
             with open(save_path, 'w') as f:
@@ -406,7 +420,7 @@ def tune(gpu_id, args, storage: str = None):
         rdb_storage = None
     
     if args.model_name:
-        study_name = "automl_hyparams"
+        study_name = "Final-1" # BEST_2는 "Final-2"로 변경 부탁드립니다.
         directions = ["maximize"]
         pruner = optuna.pruners.HyperbandPruner()
     else:
@@ -440,7 +454,10 @@ def tune(gpu_id, args, storage: str = None):
 
     ## trials that satisfies Pareto Fronts
     for tr in best_trials:
-        print(f"  value1:{tr.values[0]}, value2:{tr.values[1]}")
+        if args.model_name:
+            print(f"  value1:{tr.values[0]}")
+        else:
+            print(f"  value1:{tr.values[0]}, value2:{tr.values[1]}")
         for key, value in tr.params.items():
             print(f"    {key}:{value}")
 
@@ -456,5 +473,6 @@ if __name__ == "__main__":
     parser.add_argument("--storage", default=f"mysql://metamong:{input('DB password: ')}@34.82.27.63/test", type=str, help="Optuna database storage path.")
     
     args = parser.parse_args()
+    seed_everything(2)
 
     tune(args.gpu, args, storage=args.storage if args.storage != "" else None)
