@@ -19,7 +19,17 @@ from src.model import Model
 from src.trainer import TorchTrainer
 from src.utils.common import get_label_counts, read_yaml
 from src.utils.torch_utils import check_runtime, model_info
+import random
+import numpy as np
 
+def seed_everything(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # if use multi-GPU
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed)
+    random.seed(seed)
 
 def train(
     model_config: Dict[str, Any],
@@ -29,6 +39,7 @@ def train(
     device: torch.device,
 ) -> Tuple[float, float, float]:
     """Train."""
+    seed_everything(2)
     # save model_config, data_config
     with open(os.path.join(log_dir, "data.yml"), "w") as f:
         yaml.dump(data_config, f, default_flow_style=False)
@@ -47,17 +58,7 @@ def train(
     # Create dataloader
     train_dl, val_dl, test_dl = create_dataloader(data_config)
 
-    # Create optimizer, scheduler, criterion
-    optimizer = torch.optim.SGD(
-        model_instance.model.parameters(), lr=data_config["INIT_LR"], momentum=0.9
-    )
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer=optimizer,
-        max_lr=data_config["INIT_LR"],
-        steps_per_epoch=len(train_dl),
-        epochs=data_config["EPOCHS"],
-        pct_start=0.05,
-    )
+    # Create criterion
     criterion = CustomCriterion(
         samples_per_cls=get_label_counts(data_config["DATA_PATH"])
         if data_config["DATASET"] == "TACO"
@@ -73,8 +74,7 @@ def train(
     trainer = TorchTrainer(
         model=model_instance.model,
         criterion=criterion,
-        optimizer=optimizer,
-        scheduler=scheduler,
+        hyperparams=data_config,
         scaler=scaler,
         device=device,
         model_path=model_path,
@@ -98,17 +98,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train model.")
     parser.add_argument(
         "--model",
-        default="configs/model/mobilenetv3.yaml",
+        default="mobilenetv3",
         type=str,
-        help="model config",
+        help="model config file name",
     )
     parser.add_argument(
-        "--data", default="configs/data/taco.yaml", type=str, help="data config"
+        "--data", default="taco", type=str, help="data config file name"
     )
     args = parser.parse_args()
 
-    model_config = read_yaml(cfg=args.model)
-    data_config = read_yaml(cfg=args.data)
+    model_cfg_path = os.path.join("configs/model", args.model + ".yaml")
+    data_cfg_path = os.path.join("configs/data", args.data + ".yaml")
+
+    model_config = read_yaml(cfg=model_cfg_path)
+    data_config = read_yaml(cfg=data_cfg_path)
 
     data_config["DATA_PATH"] = os.environ.get("SM_CHANNEL_TRAIN", data_config["DATA_PATH"])
 
